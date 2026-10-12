@@ -1,177 +1,78 @@
-# 🧠 Qloo Agentic Hackathon
+# 🧠 TasteMem — Your Personal Cultural Shelf
 
-> **Agents, but with taste.**
+> **Every experience you've loved, organized visually. Cross-domain recommendations, powered by Qloo's Cultural AI.**
 
 [![Hackathon](https://img.shields.io/badge/Devpost-Qloo%20Agentic%20Hackathon-blue)](https://qloo.devpost.com/)
-[![Deadline](https://img.shields.io/badge/Deadline-Oct%2030%2C%202026-red)](https://qloo.devpost.com/)
-[![Prizes](https://img.shields.io/badge/Prizes-%2425%2C000%20%2B%20%2425K%20Investment-gold)](https://qloo.devpost.com/)
+[![Target Base URL](https://img.shields.io/badge/API-hackathon.api.qloo.com-cyan)](https://hackathon.api.qloo.com)
+[![Auth Header](https://img.shields.io/badge/Auth-X--Api--Key-gold)](https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 ---
 
-## 🏆 Hackathon Overview
+## 📖 Documentation Index
 
-| Detail | Info |
-|--------|------|
-| **Hackathon** | [Qloo Agentic Hackathon](https://qloo.devpost.com/) |
-| **Timeline** | Sep 30 – Oct 30, 2026 |
-| **Format** | Online, Public |
-| **Prizes** | $25,000 in cash ($15K / $6K / $4K) |
-| **Bonus** | Jason Calacanis will personally invest **$25,000** into his favorite entry |
-| **Theme** | Machine Learning / AI |
-
-### Judges
-
-- **Jason Calacanis** — American Entrepreneur & Angel Investor / Bestie
-- **Mike Diolosa** — CTO, Qloo
-- **Nicole Seligman** — Member, OpenAI Board of Directors
-- **Todd Boehly** — Co-founder, Chairman & CEO, Eldridge Industries
-- **Cedric the Entertainer** — Actor, Comedian, Producer
-- **Michael Abrams** — EVP Strategic Initiatives, Live Nation Entertainment
+| Document | Purpose & Key Contents |
+|---|---|
+| **[VISION.md](VISION.md)** | **Product Vision & Core Problem:** Why single-domain trackers fail, target persona, the visual shelf concept, 4 recommendation modes ("More Like This", "Surprise Me", "Go Wild", "Trip Guide"), and anti-clutter manifesto. |
+| **[ARCHITECTURE.md](ARCHITECTURE.md)** | **System Architecture & Technical Specs:** Component diagrams, metadata & cover art API pipeline (AniList, TMDB, Deezer, Google Books, Geoapify), Qloo Cultural AI integration (`/search` & `/v2/insights`), and data models. |
+| **[DESIGN.md](DESIGN.md)** | **Design System Tokens:** Curatorial dark palette, typography hierarchy, visual shelf card layouts, and mobile-first principles. |
 
 ---
 
-## 🎯 What is Qloo?
+## 🎯 What is TasteMem?
 
-**Qloo** is the world's leading **Cultural AI** platform. Founded in 2012, it uses a proprietary **Taste Graph** of **250M+ entities** across lifestyle domains to predict and understand consumer preferences — all without relying on personally identifiable information (PII).
+People track their cultural lives across fragmented apps—**MyAnimeList** for anime, **Letterboxd** for movies, **Goodreads** for books, **Spotify** for music, and **Google Maps** for food and travel. None of them talk to each other, and generic LLMs give hallucinated, mainstream recommendations.
 
-### Domains Covered
-- 🎵 Music
-- 🎬 Film & TV
-- 🍽️ Dining & Restaurants
-- 👗 Fashion & Brands
-- ✈️ Travel & Destinations
-- 📚 Books & Literature
-- 🎭 Nightlife & Entertainment
-- 🏨 Hotels & Hospitality
-
-### Key Capabilities (via API)
-| Capability | Description |
-|------------|-------------|
-| **Insights API** | Get taste-based recommendations, cultural affinities, and cross-category correlations |
-| **Search Entities** | Search across 250M+ entities by name, type, or attributes |
-| **Demographic Insights** | Understand audience demographics for any entity |
-| **Heatmap Insights** | Geographic popularity and cultural heat mapping |
-| **Taste Analysis** | Deep dive into why entities are connected culturally |
-| **Location Intelligence** | Analyze cultural characteristics of specific geographies |
-
-### Backed By
-Leonardo DiCaprio, Elton John, Barry Sternlicht (Starwood Hotels), and more.
-
-### Consumer Product
-Qloo owns **[TasteDive](https://tastedive.com)** — a consumer-facing recommendation engine.
+**TasteMem** is a unified visual shelf where you log things you love:
+1. **Visual Shelves:** Add anime, movies, places, books, and music with automatic cover art fetching and your personal short memory.
+2. **Silent Taste Graph Ingestion:** Every logged item is automatically mapped to canonical entities in **Qloo's 575M+ cultural entity graph**.
+3. **Cross-Domain Recommendations ("Go Wild"):** Ask for recommendations grounded in your actual taste. Qloo connects the dots across domains—discovering how your anime and ramen preferences correlate with specific indie books, musicians, or travel destinations.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quickstart & Setup Guide
 
-### Prerequisites
+### 1. Prerequisites
+- Python 3.10+
+- Node.js 18+ (for frontend app)
+- Qloo Hackathon API key ([Developer Guide](https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide))
 
-- Python 3.10+ (or Node.js 18+)
-- A Qloo API key ([Get yours here](https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide#getting-your-api-key))
-
-### Setup
-
+### 2. Backend Setup
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/Dev-angPatil/qloo-agentic-hackathon.git
 cd qloo-agentic-hackathon
 
-# Create environment file
-cp .env.example .env
-# Add your QLOO_API_KEY to .env
+# Setup virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
 
-# Install dependencies (Python example)
+# Install dependencies
 pip install -r requirements.txt
 
-# Run the app
-python main.py
+# Configure environment variables
+cp .env.example .env
+# Edit .env and enter your QLOO_API_KEY
 ```
 
-### Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `QLOO_API_KEY` | Your Qloo API key for hackathon access | ✅ |
+### 3. Run Development Server
+```bash
+uvicorn src.app:app --reload --port 8000
+```
+Navigate to `http://localhost:8000/docs` to inspect the Swagger API documentation.
 
 ---
 
-## 📚 Qloo API Reference
+## 🔑 Qloo API Authentication Protocol
 
-- **Developer Guide**: [docs.qloo.com/reference/qloo-llm-hackathon-developer-guide](https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide)
-- **API Overview**: [docs.qloo.com/reference/api-overview](https://docs.qloo.com/reference/api-overview)
-- **API Examples (Recipes)**: [docs.qloo.com/recipes](https://docs.qloo.com/recipes)
-- **Insights API Deep Dive**: [docs.qloo.com/reference/insights-api-deep-dive](https://docs.qloo.com/reference/insights-api-deep-dive)
-
-### Quick API Example
-
-```python
-import requests
-
-QLOO_API_KEY = "your_api_key_here"
-BASE_URL = "https://api.qloo.com/v1"
-
-# Search for entities
-response = requests.get(
-    f"{BASE_URL}/search",
-    headers={"Authorization": f"Bearer {QLOO_API_KEY}"},
-    params={"query": "Italian restaurant", "type": "restaurant"}
-)
-
-print(response.json())
-```
-
----
-
-## 📋 Submission Requirements
-
-Your submission **must** include:
-
-- [x] ✅ A link to a **functional demo** application (live, hosted, end-to-end)
-- [x] ✅ A URL to a **public code repository** (this repo)
-- [x] ✅ A **text description** of what your project does
-- [x] ✅ **Externally hosted** demo (live website/web app, hosted APK, or TestFlight)
-- [x] ✅ An **open-source license** (MIT) visible in the repo
-
-> ⚠️ Demo videos are **NOT** required. Judges will use the live demo directly.
-
-### Judging Criteria
-
-| Criteria | Description |
-|----------|-------------|
-| **Technological Implementation** | How thoroughly and skillfully does the project use Qloo? |
-| **Design** | Does it deliver a complete, coherent product experience? |
-| **Potential Impact** | Does it solve a real problem for a real audience? |
-| **Quality of the Idea** | Is this a creative, non-obvious use of Qloo? |
-
----
-
-## 🏗️ Project Structure
-
-```
-qloo-agentic-hackathon/
-├── README.md              # This file
-├── VISION.md              # Product vision and goals
-├── ARCHITECTURE.md        # System architecture and design
-├── LICENSE                 # MIT License
-├── .env.example            # Environment variable template
-├── .gitignore              # Git ignore rules
-├── requirements.txt        # Python dependencies
-└── src/                    # Source code (TBD)
-```
+> ⚠️ **CRITICAL AUTHENTICATION NOTICE:**
+> - **Production Hackathon Base URL:** `https://hackathon.api.qloo.com`
+> - Hackathon API keys **only** function against `https://hackathon.api.qloo.com`. Calling other URLs returns `401 Unauthorized`.
+> - **Authentication Header:** The gateway strictly requires `X-Api-Key: <key>`.
+> - **Do NOT use:** `Authorization: Bearer <key>` (this fails with `401 Unauthorized`).
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-## 🔗 Links
-
-- [Qloo Hackathon (Devpost)](https://qloo.devpost.com/)
-- [Qloo API Docs](https://docs.qloo.com/)
-- [Qloo Website](https://qloo.com/)
-- [TasteDive](https://tastedive.com/)
-- [Hackathon Contact](mailto:ian@qloo.com)
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
