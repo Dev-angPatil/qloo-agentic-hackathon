@@ -20,6 +20,7 @@ export const SEED_SHELVES: Shelf[] = [
         description: "Chihiro stumbles into a magical world ruled by spirits and a bathhouse witch.",
         userNote: "Comfort watch on rainy nights. The soundtrack gives me chills.",
         domain: "anime",
+        qlooEntityId: "9B33A620-68CA-49B3-BFCF-F09CCF8AD595",
         year: "2001",
         createdAt: new Date().toISOString(),
       },
@@ -32,6 +33,7 @@ export const SEED_SHELVES: Shelf[] = [
         description: "Bounty hunters drifting through the solar system accompanied by bebop jazz.",
         userNote: "Peak 90s aesthetic. Episode 5 ballad of fallen angels is perfection.",
         domain: "anime",
+        qlooEntityId: "6EBC0C74-90B9-4E45-941B-1BBAA521DA16",
         year: "1998",
         createdAt: new Date().toISOString(),
       },
@@ -44,6 +46,7 @@ export const SEED_SHELVES: Shelf[] = [
         description: "An immortal elf mage reflects on human connections after the demon king is slain.",
         userNote: "Meditative and profoundly touching meditation on memory.",
         domain: "anime",
+        qlooEntityId: "C55D99C5-7A50-42FF-85E8-AB6C7FB937E7",
         year: "2023",
         createdAt: new Date().toISOString(),
       },
@@ -66,6 +69,7 @@ export const SEED_SHELVES: Shelf[] = [
         description: "Young blade runner K's discovery of a long-buried secret leads him to track down former blade runner Rick Deckard.",
         userNote: "Roger Deakins cinematography is unmatched. The scale and atmosphere.",
         domain: "movies",
+        qlooEntityId: "3A02361C-987B-4F7E-9AAD-071C3853AD92",
         year: "2017",
         createdAt: new Date().toISOString(),
       },
@@ -78,6 +82,7 @@ export const SEED_SHELVES: Shelf[] = [
         description: "A mysterious Hollywood stuntman and mechanic who moonlights as a getaway driver finds himself in trouble.",
         userNote: "The neon night driving scenes and synth-wave score.",
         domain: "movies",
+        qlooEntityId: "81AD2DF6-5C6E-4093-BF8A-A12EE901D6BE",
         year: "2011",
         createdAt: new Date().toISOString(),
       },
@@ -100,6 +105,7 @@ export const SEED_SHELVES: Shelf[] = [
         description: "Groovy psychedelic soul fusion celebrating wide open Texas highways.",
         userNote: "Warm analog bassline, morning coffee ritual staple.",
         domain: "music",
+        qlooEntityId: "BAF6317A-DF94-4C90-92AE-63F86560C21B",
         year: "2020",
         createdAt: new Date().toISOString(),
       },
@@ -112,12 +118,23 @@ export const SEED_SHELVES: Shelf[] = [
         description: "The definitive shoegaze monument with glide guitar wall of sound.",
         userNote: "Hypnotic dream noise. Sounds like melted sunlight.",
         domain: "music",
+        qlooEntityId: "7B4EDC5A-9779-4338-88DA-D5C415385511",
         year: "1991",
         createdAt: new Date().toISOString(),
       },
     ],
   },
 ];
+
+export const CANONICAL_SEED_MAP: Record<string, string> = {
+  "Spirited Away": "9B33A620-68CA-49B3-BFCF-F09CCF8AD595",
+  "Cowboy Bebop": "6EBC0C74-90B9-4E45-941B-1BBAA521DA16",
+  "Frieren: Beyond Journey's End": "C55D99C5-7A50-42FF-85E8-AB6C7FB937E7",
+  "Blade Runner 2049": "3A02361C-987B-4F7E-9AAD-071C3853AD92",
+  "Drive": "81AD2DF6-5C6E-4093-BF8A-A12EE901D6BE",
+  "Texas Sun": "BAF6317A-DF94-4C90-92AE-63F86560C21B",
+  "Loveless": "7B4EDC5A-9779-4338-88DA-D5C415385511",
+};
 
 export function getStoredShelves(): Shelf[] {
   if (typeof window === "undefined") return SEED_SHELVES;
@@ -127,7 +144,22 @@ export function getStoredShelves(): Shelf[] {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_SHELVES));
       return SEED_SHELVES;
     }
-    return JSON.parse(raw);
+    const shelves: Shelf[] = JSON.parse(raw);
+    let migrated = false;
+    for (const shelf of shelves) {
+      if (Array.isArray(shelf.items)) {
+        for (const item of shelf.items) {
+          if (!item.qlooEntityId && CANONICAL_SEED_MAP[item.title]) {
+            item.qlooEntityId = CANONICAL_SEED_MAP[item.title];
+            migrated = true;
+          }
+        }
+      }
+    }
+    if (migrated) {
+      saveStoredShelves(shelves);
+    }
+    return shelves;
   } catch {
     return SEED_SHELVES;
   }
@@ -141,3 +173,23 @@ export function saveStoredShelves(shelves: Shelf[]): void {
     console.error("Failed to save shelves to localStorage", err);
   }
 }
+
+export function exportShelvesToJson(shelves: Shelf[]): void {
+  if (typeof window === "undefined") return;
+  const jsonStr = JSON.stringify(shelves, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `tastemem_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function resetToSeedShelves(): Shelf[] {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(SEED_SHELVES));
+  }
+  return SEED_SHELVES;
+}
+

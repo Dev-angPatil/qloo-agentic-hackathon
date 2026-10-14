@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node tests/recommendations_verification.mjs",
+    "test:adversarial": "node tests/adversarial_recommendations.mjs",
+    "test:stress": "node tests/adversarial_recommendations_stress.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -54,9 +54,44 @@ export const SmartAddModal: React.FC<SmartAddModalProps> = ({
     return () => clearTimeout(timer);
   }, [query, domain]);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        resetAndClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
   const handleSave = async () => {
     if (!selectedResult) return;
     setSaving(true);
+
+    const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    let qlooId: string | undefined = undefined;
+
+    if (selectedResult.externalId && UUID_REGEX.test(selectedResult.externalId)) {
+      qlooId = selectedResult.externalId;
+    } else {
+      try {
+        const resolveRes = await fetch(
+          `/api/qloo/resolve?query=${encodeURIComponent(selectedResult.title)}&domain=${domain}`,
+          { signal: AbortSignal.timeout(700) }
+        );
+        if (resolveRes.ok) {
+          const qlooData = await resolveRes.json();
+          if (qlooData?.entity_id) {
+            qlooId = qlooData.entity_id;
+          }
+        }
+      } catch {
+        // Fast fallback: proceed without blocking
+      }
+    }
 
     const newItem: ShelfItem = {
       id: "item-" + Date.now(),
@@ -67,23 +102,10 @@ export const SmartAddModal: React.FC<SmartAddModalProps> = ({
       description: selectedResult.description,
       userNote: userNote.trim() || undefined,
       domain,
+      qlooEntityId: qlooId,
       year: selectedResult.year,
       createdAt: new Date().toISOString(),
     };
-
-    // Asynchronously resolve Qloo entity ID
-    try {
-      fetch(`/api/qloo/resolve?query=${encodeURIComponent(selectedResult.title)}&domain=${domain}`)
-        .then((res) => res.json())
-        .then((qlooData) => {
-          if (qlooData?.entity_id) {
-            newItem.qlooEntityId = qlooData.entity_id;
-          }
-        })
-        .catch(() => {});
-    } catch {
-      // Non-blocking
-    }
 
     onItemAdded(newItem);
     setSaving(false);
@@ -150,10 +172,18 @@ export const SmartAddModal: React.FC<SmartAddModalProps> = ({
                     ? "Interstellar"
                     : domain === "music"
                     ? "Khruangbin"
-                    : "Norwegian Wood"
+                    : domain === "books"
+                    ? "Norwegian Wood"
+                    : "Blue Bottle Coffee"
                 })...`}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && results.length > 0 && !selectedResult) {
+                    e.preventDefault();
+                    setSelectedResult(results[0]);
+                  }
+                }}
                 className="w-full pl-11 pr-10 py-3.5 rounded-2xl bg-neutral-900/90 border border-white/15 focus:border-white focus:outline-none text-white placeholder-neutral-500 text-sm transition-colors"
               />
               {loading && (

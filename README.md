@@ -13,9 +13,10 @@
 
 | Document | Purpose & Key Contents |
 |---|---|
+| **[DELIVERABLES.md](DELIVERABLES.md)** | **Complete Finished Product & Delivery Guide:** End-to-end specifications of all deliverables, the 4 recommendation modes, Devpost pitch, 3-minute video recording script, 30-second judge "Aha!" moment protocol, and acceptance criteria. |
 | **[VISION.md](VISION.md)** | **Product Vision & Core Problem:** Why single-domain trackers fail, target persona, the visual shelf concept, 4 recommendation modes ("More Like This", "Surprise Me", "Go Wild", "Trip Guide"), and anti-clutter manifesto. |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | **System Architecture & Technical Specs:** Component diagrams, metadata & cover art API pipeline (AniList, TMDB, Deezer, Google Books, Geoapify), Qloo Cultural AI integration (`/search` & `/v2/insights`), and data models. |
-| **[DESIGN.md](DESIGN.md)** | **Design System Tokens:** Curatorial dark palette, typography hierarchy, visual shelf card layouts, and mobile-first principles. |
+| **[DESIGN.md](DESIGN.md)** | **Design System Tokens:** Nothing OS inspired liquid monochrome design tokens, typography hierarchy, tactile Framer Motion physics tokens, and squircle layouts. |
 
 ---
 
@@ -33,33 +34,51 @@ People track their cultural lives across fragmented apps—**MyAnimeList** for a
 ## 🚀 Quickstart & Setup Guide
 
 ### 1. Prerequisites
-- Python 3.10+
-- Node.js 18+ (for frontend app)
+- Node.js 18+ (Node 20+ recommended)
 - Qloo Hackathon API key ([Developer Guide](https://docs.qloo.com/reference/qloo-llm-hackathon-developer-guide))
 
-### 2. Backend Setup
+### 2. Installation & Configuration
 ```bash
 # Clone the repository
 git clone https://github.com/Dev-angPatil/qloo-agentic-hackathon.git
 cd qloo-agentic-hackathon
 
-# Setup virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+# Install Node dependencies
+npm install
 
 # Configure environment variables
 cp .env.example .env
-# Edit .env and enter your QLOO_API_KEY
+# Edit .env and enter your QLOO_API_KEY:
+# QLOO_API_KEY=your_qloo_hackathon_api_key_here
 ```
 
-### 3. Run Development Server
+### 3. Run Application
 ```bash
-uvicorn src.app:app --reload --port 8000
+# Start Next.js development server
+npm run dev
+
+# Or run optimized production build
+npm run build
+npm run start
 ```
-Navigate to `http://localhost:8000/docs` to inspect the Swagger API documentation.
+Navigate to `http://localhost:3000` to interact with your personal cultural shelves and the Taste Compass.
+
+---
+
+## 🧪 Automated Test Verification
+
+TasteMem includes a complete automated testing harness asserting all 4 recommendation modes, popularity ceilings, cross-domain mappings, and image reachability against live Qloo Hackathon endpoints:
+
+```bash
+# Run contract & schema verification (7 assertions)
+npm run test
+
+# Run empirical & adversarial multi-domain tests (31 assertions)
+npm run test:adversarial
+
+# Run stress & latency boundary tests (26 assertions)
+npm run test:stress
+```
 
 ---
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Domain, Shelf } from "@/types";
 import { X, Tv, Film, Disc, Book, MapPin, Plus } from "lucide-react";
@@ -27,6 +27,20 @@ export const CreateShelfModal: React.FC<CreateShelfModalProps> = ({
 }) => {
   const [title, setTitle] = useState("");
   const [selectedDomain, setSelectedDomain] = useState<Domain>("anime");
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setTitle("");
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -22,6 +22,7 @@ const DOMAIN_ICONS: Record<string, React.ElementType> = {
 export const ShelfBlock: React.FC<ShelfBlockProps> = ({ shelf, onOpen }) => {
   const IconComponent = DOMAIN_ICONS[shelf.domain] || Tv;
   const previewItems = shelf.items.slice(0, 4);
+  const isDraggingRef = React.useRef(false);
 
   return (
     <motion.div
@@ -30,12 +31,24 @@ export const ShelfBlock: React.FC<ShelfBlockProps> = ({ shelf, onOpen }) => {
       dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
       dragElastic={0.4}
       dragTransition={{ bounceStiffness: 450, bounceDamping: 22 }}
+      onDragStart={() => {
+        isDraggingRef.current = true;
+      }}
+      onDragEnd={() => {
+        setTimeout(() => {
+          isDraggingRef.current = false;
+        }, 80);
+      }}
       whileDrag={{ scale: 1.08, zIndex: 50, cursor: "grabbing" }}
       variants={jiggleVariants}
       initial="idle"
       whileHover="hover"
       whileTap="tap"
-      onClick={() => onOpen(shelf)}
+      onClick={() => {
+        if (!isDraggingRef.current) {
+          onOpen(shelf);
+        }
+      }}
       className="relative w-64 h-64 sm:w-72 sm:h-72 p-5 rounded-squircle bg-black text-white shadow-[0_15px_40px_rgba(0,0,0,0.18)] hover:shadow-[0_25px_50px_rgba(0,0,0,0.3)] border border-neutral-800 flex flex-col justify-between cursor-grab active:cursor-grabbing select-none transition-shadow group"
       style={{ touchAction: "none" }}
     >

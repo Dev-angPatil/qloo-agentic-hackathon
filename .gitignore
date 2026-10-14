@@ -40,3 +40,4 @@ htmlcov/
 *.o
 *.so
 *.dylib
+*.tsbuildinfo

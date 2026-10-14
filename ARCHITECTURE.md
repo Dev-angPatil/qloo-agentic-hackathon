@@ -180,6 +180,12 @@ class RecommendationResult(BaseModel):
 
 ## 5. Storage Strategy
 
-- **Local-First SQLite Database:** Stored at `data/tastemem.db` via SQLAlchemy / SQLModel.
+- **Local-First SQLite & Browser Storage:** Stored in browser `localStorage` (`tastemem_shelves_v1`) and optionally synchronized with `data/tastemem.db` via SQLAlchemy / SQLModel.
 - **Fast In-Memory Cache:** In-memory caching for metadata API results (AniList/TMDB responses) to minimize external network round-trips.
 - **Export / Import:** 1-click JSON export/import for zero-setup data portability across devices.
+
+---
+
+## 6. Deliverables Specification Reference
+
+For the comprehensive end-to-end specifications of all delivered features, the 4 recommendation modes, verification checklists, and hackathon presentation protocols, see [DELIVERABLES.md](DELIVERABLES.md).

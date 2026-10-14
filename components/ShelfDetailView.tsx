@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Shelf, ShelfItem } from "@/types";
-import { ArrowLeft, Plus, Sparkles, Tv, Film, Disc, Book, MapPin, Trash2 } from "lucide-react";
+import { Domain, Shelf, ShelfItem } from "@/types";
+import { ArrowLeft, Plus, Tv, Film, Disc, Book, MapPin, Trash2, Compass } from "lucide-react";
 import { liquidSpring, jellyTap } from "@/lib/physics";
 
 interface ShelfDetailViewProps {
@@ -11,6 +11,8 @@ interface ShelfDetailViewProps {
   onBack: () => void;
   onOpenAddModal: () => void;
   onDeleteItem: (shelfId: string, itemId: string) => void;
+  onDeleteShelf?: (shelfId: string) => void;
+  onOpenCompass?: (domain: Domain) => void;
 }
 
 const DOMAIN_ICONS: Record<string, React.ElementType> = {
@@ -26,8 +28,28 @@ export const ShelfDetailView: React.FC<ShelfDetailViewProps> = ({
   onBack,
   onOpenAddModal,
   onDeleteItem,
+  onDeleteShelf,
+  onOpenCompass,
 }) => {
   const IconComponent = DOMAIN_ICONS[shelf.domain] || Tv;
+
+  // Escape key to navigate back to canvas
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onBack();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onBack]);
+
+  const handleDeleteShelf = () => {
+    if (!onDeleteShelf) return;
+    if (confirm(`Delete the "${shelf.title}" vault and its entries?`)) {
+      onDeleteShelf(shelf.id);
+    }
+  };
 
   return (
     <motion.div
@@ -60,8 +82,19 @@ export const ShelfDetailView: React.FC<ShelfDetailViewProps> = ({
           </h1>
         </div>
 
-        <div className="font-mono text-xs text-neutral-500 uppercase tracking-widest">
-          {shelf.items.length} {shelf.items.length === 1 ? "ITEM" : "ITEMS"}
+        <div className="flex items-center space-x-3">
+          <span className="font-mono text-xs text-neutral-500 uppercase tracking-widest hidden sm:inline">
+            {shelf.items.length} {shelf.items.length === 1 ? "ITEM" : "ITEMS"}
+          </span>
+          {onDeleteShelf && (
+            <button
+              onClick={handleDeleteShelf}
+              title="Delete Shelf"
+              className="w-8 h-8 rounded-full bg-neutral-950 border border-neutral-800 hover:border-red-500/40 text-neutral-500 hover:text-red-400 flex items-center justify-center transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -151,13 +184,26 @@ export const ShelfDetailView: React.FC<ShelfDetailViewProps> = ({
         )}
       </main>
 
-      {/* Floating Liquid Smart Add Button */}
-      <div className="fixed bottom-6 right-6 z-30">
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-6 right-6 z-30 flex items-center space-x-3">
+        {onOpenCompass && (
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={jellyTap}
+            onClick={() => onOpenCompass(shelf.domain)}
+            className="flex items-center space-x-2 px-4 py-3 rounded-full bg-neutral-900 border border-neutral-700 hover:border-white text-white font-mono text-xs tracking-wider uppercase shadow-xl transition-all cursor-pointer"
+            title={`Open Taste Compass for ${shelf.domain}`}
+          >
+            <Compass className="w-4 h-4 text-white stroke-[2.2]" />
+            <span className="hidden sm:inline">TASTE COMPASS</span>
+          </motion.button>
+        )}
+
         <motion.button
-          whileHover={{ scale: 1.08 }}
+          whileHover={{ scale: 1.06 }}
           whileTap={jellyTap}
           onClick={onOpenAddModal}
-          className="flex items-center space-x-2 px-5 py-3.5 rounded-full bg-white text-black font-medium text-sm shadow-[0_10px_35px_rgba(255,255,255,0.25)] hover:bg-neutral-200 transition-colors"
+          className="flex items-center space-x-2 px-5 py-3.5 rounded-full bg-white text-black font-medium text-sm shadow-[0_10px_35px_rgba(255,255,255,0.25)] hover:bg-neutral-200 transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span className="font-mono text-xs tracking-wider uppercase font-semibold">

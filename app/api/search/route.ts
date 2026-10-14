@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { DOMAIN_FALLBACK_IMAGES } from "@/lib/metadataFallback";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -163,6 +164,82 @@ export async function GET(request: NextRequest) {
           };
         }).filter((b: any) => b.coverImageUrl);
         return NextResponse.json({ results });
+      }
+    }
+
+    if (domain === "places") {
+      // 1. Qloo Places Search
+      const apiKey = process.env.QLOO_API_KEY;
+      if (apiKey) {
+        try {
+          const qlooUrl = `https://hackathon.api.qloo.com/search?query=${encodeURIComponent(query)}&types=urn:entity:place&take=8`;
+          const res = await fetch(qlooUrl, {
+            headers: {
+              "X-Api-Key": apiKey,
+              Accept: "application/json",
+            },
+            signal: AbortSignal.timeout(4000),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const items = data.results || [];
+            if (items.length > 0) {
+              const results = items.map((p: any) => {
+                const tagNames = Array.isArray(p.tags)
+                  ? p.tags.slice(0, 2).map((t: any) => t?.name).filter(Boolean).join(" • ")
+                  : "";
+                const img =
+                  p.properties?.image?.url ||
+                  p.properties?.photos?.[0]?.url ||
+                  DOMAIN_FALLBACK_IMAGES.places;
+                return {
+                  title: p.name,
+                  subtitle: p.disambiguation || tagNames || "Cultural Sanctuary",
+                  coverImageUrl: img,
+                  description: p.disambiguation ? `Location: ${p.disambiguation}` : "Curated place and cultural haven",
+                  domain: "places",
+                  externalId: p.entity_id,
+                };
+              });
+              return NextResponse.json({ results });
+            }
+          }
+        } catch {
+          // Fall through to Photon
+        }
+      }
+
+      // 2. Free, zero-auth fallback via Photon (Komoot / OpenStreetMap)
+      try {
+        const photonRes = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`,
+          { signal: AbortSignal.timeout(3000) }
+        );
+        if (photonRes.ok) {
+          const data = await photonRes.json();
+          const features = data.features || [];
+          const results = features
+            .map((f: any) => {
+              const props = f.properties || {};
+              const city = props.city || props.town || props.state || "";
+              const country = props.country || "";
+              const loc = [city, country].filter(Boolean).join(", ");
+              return {
+                title: props.name || query,
+                subtitle: loc || props.osm_value || "Place",
+                coverImageUrl: DOMAIN_FALLBACK_IMAGES.places,
+                description: loc ? `Located in ${loc}` : "Cultural spot",
+                domain: "places",
+                externalId: String(props.osm_id || Math.random()),
+              };
+            })
+            .filter((f: any) => f.title);
+          if (results.length > 0) {
+            return NextResponse.json({ results });
+          }
+        }
+      } catch {
+        // Fall through
       }
     }
 

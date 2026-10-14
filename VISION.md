@@ -93,3 +93,9 @@ In accordance with core-first design principles, TasteMem will explicitly **NOT*
 1. **Cold-Start to Wow:** An empty app reaches a populated, gorgeous multi-shelf visual state in under 60 seconds.
 2. **Cross-Domain Affinity Proof:** Demonstrating that logging 3 anime titles and 2 cafés successfully influences book or music recommendations with verifiable Qloo affinity scores.
 3. **Zero Hallucination:** 100% of recommended items correspond to verified cultural entities in Qloo's 575M+ database.
+
+---
+
+## 7. Deliverables & Hackathon Blueprint
+
+For the comprehensive end-to-end specifications, user journeys, video demo scripts, and hackathon submission requirements, refer to the master [DELIVERABLES.md](DELIVERABLES.md).
