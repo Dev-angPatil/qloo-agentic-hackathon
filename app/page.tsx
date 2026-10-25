@@ -1,316 +1,218 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Shelf, ShelfItem } from "@/types";
-import { getStoredShelves, saveStoredShelves, exportShelvesToJson, resetToSeedShelves } from "@/lib/storage";
-import { ShelfBlock } from "@/components/ShelfBlock";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Compass, Crosshair, Plus, Search, Sparkles } from "lucide-react";
+import { Domain, Shelf, ShelfItem, Vibe } from "@/types";
+import { getMemoryItems } from "@/lib/whiteboard";
+import { getStoredCanvasItems, getStoredShelves, getStoredVibes, saveStoredCanvasItems, saveStoredShelves, saveStoredVibes } from "@/lib/storage";
+import { jellyTap } from "@/lib/physics";
+import { WhiteboardBook } from "@/components/WhiteboardBook";
+import { MemoryPostIt } from "@/components/MemoryPostIt";
+import { AddFlowChooserModal } from "@/components/AddFlowChooserModal";
+import { NoteFlowModal } from "@/components/NoteFlowModal";
+import { RecordFlowModal } from "@/components/RecordFlowModal";
 import { ShelfDetailView } from "@/components/ShelfDetailView";
 import { SmartAddModal } from "@/components/SmartAddModal";
-import { CreateShelfModal } from "@/components/CreateShelfModal";
 import { TasteCompassModal } from "@/components/TasteCompassModal";
-import { Plus, Compass, Download, Upload, RotateCcw } from "lucide-react";
-import { jellyTap } from "@/lib/physics";
-import { Domain } from "@/types";
+import { CreateVibeModal } from "@/components/CreateVibeModal";
+import { VibeBoundary } from "@/components/VibeBoundary";
+import { useTasteMemSync } from "@/lib/firebase/syncBridge";
 
 export default function Home() {
   const [shelves, setShelves] = useState<Shelf[]>([]);
+  const [canvasItems, setCanvasItems] = useState<ShelfItem[]>([]);
+  const [vibes, setVibes] = useState<Vibe[]>([]);
   const [activeShelf, setActiveShelf] = useState<Shelf | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isCompassModalOpen, setIsCompassModalOpen] = useState(false);
-  const [compassInitialDomain, setCompassInitialDomain] = useState<Domain | undefined>(undefined);
-  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const [addFlow, setAddFlow] = useState<"note" | "record" | "vibe" | null>(null);
+  const [isMediaSearchOpen, setIsMediaSearchOpen] = useState(false);
+  const [isCompassOpen, setIsCompassOpen] = useState(false);
+  const [compassDomain, setCompassDomain] = useState<Domain | undefined>();
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panState = useRef({ dragging: false, x: 0, y: 0, startX: 0, startY: 0 });
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinchState = useRef({ distance: 0, zoom: 1 });
 
-  const handleExport = () => {
-    exportShelvesToJson(shelves);
-  };
+  // Real-time Cloud Firestore Synchronization Hook
+  useTasteMemSync(
+    useCallback((remoteShelves: Shelf[]) => {
+      setShelves(remoteShelves);
+    }, []),
+    useCallback((remoteCanvas: ShelfItem[]) => {
+      setCanvasItems(remoteCanvas);
+    }, [])
+  );
 
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target?.result as string);
-        if (Array.isArray(parsed)) {
-          handleUpdateShelves(parsed);
-        }
-      } catch (err) {
-        console.error("Failed to parse imported JSON", err);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  };
-
-  const handleResetPresets = () => {
-    if (confirm("Reset vaults to curated starter seeds?")) {
-      handleUpdateShelves(resetToSeedShelves());
-    }
-  };
-
-  // Load shelves on client mount
   useEffect(() => {
     setShelves(getStoredShelves());
+    setCanvasItems(getStoredCanvasItems());
+    setVibes(getStoredVibes());
   }, []);
 
-  // Update storage whenever shelves change
-  const handleUpdateShelves = (newShelves: Shelf[]) => {
-    setShelves(newShelves);
-    saveStoredShelves(newShelves);
-    if (activeShelf) {
-      const updatedActive = newShelves.find((s) => s.id === activeShelf.id) || null;
-      setActiveShelf(updatedActive);
+  const persist = useCallback((nextShelves: Shelf[]) => {
+    setShelves(nextShelves);
+    saveStoredShelves(nextShelves);
+    setActiveShelf((current) => current ? nextShelves.find((shelf) => shelf.id === current.id) || null : null);
+  }, []);
+
+  const openAddMenu = useCallback(() => setIsAddMenuOpen(true), []);
+
+  const persistVibes = useCallback((nextVibes: Vibe[]) => {
+    setVibes(nextVibes);
+    saveStoredVibes(nextVibes);
+  }, []);
+
+  const saveCanvasItems = useCallback((nextItems: ShelfItem[]) => {
+    setCanvasItems(nextItems);
+    saveStoredCanvasItems(nextItems);
+  }, []);
+
+  const addCanvasItem = useCallback((item: ShelfItem) => {
+    saveCanvasItems([item, ...canvasItems]);
+  }, [canvasItems, saveCanvasItems]);
+
+  const convertCanvasItem = useCallback((item: ShelfItem) => {
+    saveCanvasItems(canvasItems.map((existing) => existing.id === item.id ? item : existing));
+  }, [canvasItems, saveCanvasItems]);
+
+  const updateCanvasItem = useCallback((item: ShelfItem) => {
+    if (item.shelfId === "__canvas__") {
+      saveCanvasItems(canvasItems.map((existing) => existing.id === item.id ? item : existing));
+      return;
     }
-  };
+    persist(shelves.map((shelf) => shelf.id === item.shelfId ? {
+      ...shelf,
+      items: shelf.items.map((existing) => existing.id === item.id ? item : existing),
+    } : shelf));
+  }, [canvasItems, persist, saveCanvasItems, shelves]);
 
-  const handleShelfCreated = (newShelf: Shelf) => {
-    const updated = [...shelves, newShelf];
-    handleUpdateShelves(updated);
-  };
+  const moveCanvasItem = useCallback((item: ShelfItem, position: { x: number; y: number }) => {
+    const target = vibes.find((vibe) => position.x >= vibe.position.x && position.x <= vibe.position.x + vibe.size.width && position.y >= vibe.position.y && position.y <= vibe.position.y + vibe.size.height);
+    const nextItem = target
+      ? { ...item, vibeId: target.id, position: { x: position.x - target.position.x, y: position.y - target.position.y } }
+      : { ...item, vibeId: undefined, position };
+    updateCanvasItem(nextItem);
+  }, [updateCanvasItem, vibes]);
 
-  const handleItemAdded = (item: ShelfItem) => {
-    if (!activeShelf) return;
-    const updated = shelves.map((s) => {
-      if (s.id === activeShelf.id) {
-        return {
-          ...s,
-          items: [item, ...s.items],
-          itemCount: s.items.length + 1,
-        };
-      }
-      return s;
-    });
-    handleUpdateShelves(updated);
-  };
+  const updateVibe = useCallback((nextVibe: Vibe) => {
+    persistVibes(vibes.map((vibe) => vibe.id === nextVibe.id ? nextVibe : vibe));
+  }, [persistVibes, vibes]);
+
+  const addItemToShelf = useCallback((item: ShelfItem, shelfId: string) => {
+    persist(shelves.map((shelf) => shelf.id === shelfId ? {
+      ...shelf,
+      items: [item, ...shelf.items],
+      itemCount: shelf.items.length + 1,
+      coverItemId: shelf.coverItemId || item.id,
+    } : shelf));
+  }, [persist, shelves]);
+
+  const updateShelfPosition = useCallback((shelfId: string, x: number, y: number) => {
+    persist(shelves.map((shelf) => shelf.id === shelfId ? { ...shelf, position: { x, y } } : shelf));
+  }, [persist, shelves]);
+
+  const updateShelf = useCallback((newShelf: Shelf) => {
+    persist(shelves.map((shelf) => shelf.id === newShelf.id ? newShelf : shelf));
+  }, [persist, shelves]);
 
   const handleDeleteItem = (shelfId: string, itemId: string) => {
-    const updated = shelves.map((s) => {
-      if (s.id === shelfId) {
-        const filtered = s.items.filter((i) => i.id !== itemId);
-        return {
-          ...s,
-          items: filtered,
-          itemCount: filtered.length,
-        };
-      }
-      return s;
-    });
-    handleUpdateShelves(updated);
+    persist(shelves.map((shelf) => shelf.id === shelfId ? { ...shelf, items: shelf.items.filter((item) => item.id !== itemId), itemCount: shelf.items.length - 1, coverItemId: shelf.coverItemId === itemId ? shelf.items.find((item) => item.id !== itemId)?.id : shelf.coverItemId } : shelf));
   };
 
   const handleDeleteShelf = (shelfId: string) => {
-    const updated = shelves.filter((s) => s.id !== shelfId);
-    handleUpdateShelves(updated);
+    persist(shelves.filter((shelf) => shelf.id !== shelfId));
     setActiveShelf(null);
   };
 
-  const handlePinRecommendation = (item: ShelfItem, targetDomain: Domain) => {
-    const existingIndex = shelves.findIndex((s) => s.domain === targetDomain);
-    if (existingIndex !== -1) {
-      const updated = [...shelves];
-      const target = updated[existingIndex];
-      const updatedItem = { ...item, shelfId: target.id };
-      updated[existingIndex] = {
-        ...target,
-        items: [updatedItem, ...target.items],
-        itemCount: target.items.length + 1,
-      };
-      handleUpdateShelves(updated);
-    } else {
-      const domainTitles: Record<Domain, string> = {
-        anime: "Anime Vault",
-        movies: "Cinema Records",
-        music: "Vinyl & Sound",
-        books: "Literature & Essays",
-        places: "Places & Cafés",
-      };
-      const newShelfId = `shelf-${Date.now()}`;
-      const updatedItem = { ...item, shelfId: newShelfId };
-      const newShelf: Shelf = {
-        id: newShelfId,
-        title: domainTitles[targetDomain] || `${targetDomain.toUpperCase()} Vault`,
-        domain: targetDomain,
-        itemCount: 1,
-        items: [updatedItem],
-        createdAt: new Date().toISOString(),
-      };
-      handleUpdateShelves([...shelves, newShelf]);
+  const handlePinRecommendation = (item: ShelfItem, domain: Domain) => {
+    const target = shelves.find((shelf) => shelf.domain === domain) || shelves[0];
+    if (target) addItemToShelf({ ...item, shelfId: target.id, memoryType: "media" }, target.id);
+  };
+
+  const memoryItems = useMemo(() => [...canvasItems, ...getMemoryItems(shelves)], [canvasItems, shelves]);
+  const totalFragments = shelves.reduce((total, shelf) => total + shelf.items.length, 0) + canvasItems.length;
+
+  const onBoardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("button, article, input, textarea, a")) return;
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    if (pointers.current.size === 1) {
+      panState.current = { dragging: true, x: pan.x, y: pan.y, startX: event.clientX, startY: event.clientY };
+    } else if (pointers.current.size === 2) {
+      panState.current.dragging = false;
+      const [first, second] = Array.from(pointers.current.values());
+      pinchState.current = { distance: Math.hypot(second.x - first.x, second.y - first.y), zoom };
     }
   };
 
-  const totalEntries = shelves.reduce((acc, s) => acc + s.items.length, 0);
+  const onBoardPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointers.current.has(event.pointerId)) return;
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (pointers.current.size >= 2) {
+      const [first, second] = Array.from(pointers.current.values());
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      if (pinchState.current.distance > 0) {
+        const nextZoom = pinchState.current.zoom * (distance / pinchState.current.distance);
+        setZoom(Math.max(0.05, Number(nextZoom.toFixed(3))));
+      }
+      return;
+    }
+
+    if (!panState.current.dragging) return;
+    setPan({ x: panState.current.x + event.clientX - panState.current.startX, y: panState.current.y + event.clientY - panState.current.startY });
+  };
+
+  const onBoardPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    pointers.current.delete(event.pointerId);
+    pinchState.current.distance = 0;
+    panState.current.dragging = false;
+  };
 
   return (
-    <div className="relative min-h-screen bg-white text-black flex flex-col justify-between items-center overflow-x-hidden select-none px-6 pt-24 pb-28">
-      {/* Top Header Bar (Clean, sleek, always accessible across mobile & desktop) */}
-      <header className="fixed top-0 left-0 right-0 z-40 px-6 sm:px-8 py-3.5 flex items-center justify-between border-b border-black/[0.08] bg-white/90 backdrop-blur-xl">
-        <div className="flex items-center space-x-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-black animate-pulse" />
-          <div>
-            <h1 className="font-mono text-xs font-semibold tracking-widest uppercase text-black">
-              TASTEMEM
-            </h1>
-            <p className="font-mono text-[9px] text-neutral-500 tracking-wider">
-              LIQUID MONOCHROME
-            </p>
-          </div>
+    <main className="whiteboard-app">
+      <div className="board-grain" />
+      <div className="board-header">
+        <div className="brand-lockup">
+          <div className="brand-mark"><Sparkles size={15} /></div>
+          <div><p className="brand-name">TasteMem</p><p className="brand-subtitle">your life, in fragments</p></div>
         </div>
-
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <div className="hidden sm:flex items-center space-x-2 font-mono text-[10px] text-neutral-600 bg-neutral-100 px-3 py-1.5 rounded-full border border-black/10">
-            <span>{shelves.length} VAULTS</span>
-            <span>•</span>
-            <span>{totalEntries} ENTRIES</span>
-          </div>
-
-          {/* Export JSON Backup */}
-          <button
-            onClick={handleExport}
-            title="Export JSON Vault Backup"
-            className="w-8 h-8 rounded-full border border-black/10 hover:border-black/30 flex items-center justify-center text-neutral-600 hover:text-black transition-colors bg-neutral-50 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Import JSON Backup */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            title="Import JSON Vault Backup"
-            className="w-8 h-8 rounded-full border border-black/10 hover:border-black/30 flex items-center justify-center text-neutral-600 hover:text-black transition-colors bg-neutral-50 cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5" />
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleImportFile}
-            className="hidden"
-          />
-
-          {/* Reset Curated Seeds */}
-          <button
-            onClick={handleResetPresets}
-            title="Reset Starter Seeds"
-            className="w-8 h-8 rounded-full border border-black/10 hover:border-black/30 flex items-center justify-center text-neutral-600 hover:text-black transition-colors bg-neutral-50 cursor-pointer"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-
-          <motion.button
-            whileTap={jellyTap}
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center space-x-1.5 px-3.5 sm:px-4 py-2 rounded-full bg-black text-white font-mono text-[11px] font-semibold tracking-wider uppercase hover:bg-neutral-800 transition-colors shadow-sm cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            <span className="hidden sm:inline">NEW SHELF</span>
-            <span className="sm:hidden">NEW</span>
-          </motion.button>
+        <div className="board-stats"><span>{shelves.length} chapters</span><i /> <span>{totalFragments} fragments</span></div>
+        <div className="header-actions">
+           <button className="center-board-control" title="Center board" aria-label="Center board" onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }}><Crosshair size={15} /><span>center</span></button>
+          <button className="header-icon" title="Open compass" onClick={() => { setCompassDomain(undefined); setIsCompassOpen(true); }}><Compass size={15} /></button>
         </div>
-      </header>
+      </div>
 
-      {/* Main Auto-Arranging Spatial Playground */}
-      <main className="w-full max-w-6xl mx-auto flex flex-col items-center justify-center my-auto">
-        <motion.div
-          layout
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 justify-items-center items-center w-full"
-        >
-          {shelves.map((shelf) => (
-            <ShelfBlock
-              key={shelf.id}
-              shelf={shelf}
-              onOpen={(s) => setActiveShelf(s)}
-            />
-          ))}
+       <section className="board-viewport" style={{ backgroundPosition: `${pan.x}px ${pan.y}px`, backgroundSize: `${36 * zoom}px ${36 * zoom}px` }} onPointerDown={onBoardPointerDown} onPointerMove={onBoardPointerMove} onPointerUp={onBoardPointerUp} onPointerCancel={onBoardPointerUp}>
+         <motion.div className="board-world" style={{ x: pan.x, y: pan.y, scale: zoom }}>
+           <div className="board-center-note">
+             <h1>Your personal archive starts here.</h1>
+           </div>
+           {shelves.map((shelf, index) => <WhiteboardBook key={shelf.id} shelf={shelf} index={index} total={shelves.length} onOpen={setActiveShelf} onMove={updateShelfPosition} />)}
+            {vibes.map((vibe) => <VibeBoundary key={vibe.id} vibe={vibe} items={memoryItems.filter((item) => item.vibeId === vibe.id)} onMove={(current, position) => updateVibe({ ...current, position })} onResize={(current, size) => updateVibe({ ...current, size })} onToggleCollapse={(current) => updateVibe({ ...current, collapsed: !current.collapsed })} />)}
+            {memoryItems.map((item, index) => <MemoryPostIt key={item.id} item={item} index={index} vibes={vibes} onUpdate={updateCanvasItem} onMove={moveCanvasItem} />)}
+         </motion.div>
+      </section>
 
-          {/* Spawn Shelf Tile on Canvas (Black Squircle) */}
-          <motion.div
-            layout
-            whileHover={{ scale: 1.04 }}
-            whileTap={jellyTap}
-            onClick={() => setIsCreateModalOpen(true)}
-            className="w-64 h-64 sm:w-72 sm:h-72 p-5 rounded-squircle bg-black text-white border border-neutral-800 shadow-[0_15px_40px_rgba(0,0,0,0.18)] hover:shadow-[0_25px_50px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center text-center cursor-pointer transition-all group select-none"
-          >
-            <div className="w-14 h-14 rounded-full border border-neutral-700 bg-neutral-900 flex items-center justify-center text-neutral-300 group-hover:text-white group-hover:border-white transition-all mb-3.5">
-              <Plus className="w-6 h-6 stroke-[2]" />
-            </div>
-            <h3 className="text-white text-base font-medium tracking-tight">
-              Create New Shelf
-            </h3>
-            <p className="font-mono text-[10px] text-neutral-400 mt-1 uppercase tracking-widest">
-              :: SPAWN VAULT TILE
-            </p>
-          </motion.div>
-        </motion.div>
-      </main>
+      <div className="board-controls">
+          <div className="board-actions"><motion.button whileTap={jellyTap} className="board-action board-action-add" aria-label="Add to canvas" title="Add to canvas" onClick={openAddMenu}><Plus size={22} /></motion.button></div>
+      </div>
 
-      {/* Expanded Shelf Detail View */}
       <AnimatePresence>
-        {activeShelf && (
-          <ShelfDetailView
-            shelf={activeShelf}
-            onBack={() => setActiveShelf(null)}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onDeleteItem={handleDeleteItem}
-            onDeleteShelf={handleDeleteShelf}
-            onOpenCompass={(domain) => {
-              setCompassInitialDomain(domain);
-              setIsCompassModalOpen(true);
-            }}
-          />
-        )}
+        {activeShelf && <ShelfDetailView shelf={activeShelf} onBack={() => setActiveShelf(null)} onOpenAddModal={() => setIsMediaSearchOpen(true)} onDeleteItem={handleDeleteItem} onDeleteShelf={handleDeleteShelf} onSetCoverItem={(shelfId, itemId) => updateShelf({ ...shelves.find((shelf) => shelf.id === shelfId)!, coverItemId: itemId })} onOpenCompass={(domain) => { setCompassDomain(domain); setIsCompassOpen(true); }} />}
       </AnimatePresence>
-
-      {/* Domain-Aware Smart Add Modal */}
-      {activeShelf && (
-        <SmartAddModal
-          domain={activeShelf.domain}
-          shelfId={activeShelf.id}
-          isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
-          onItemAdded={handleItemAdded}
-        />
-      )}
-
-      {/* Create Shelf Modal */}
-      <CreateShelfModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onShelfCreated={handleShelfCreated}
-      />
-
-      {/* Floating Taste Compass Pill (Tactile trigger on canvas) */}
-      {!activeShelf && (
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center"
-        >
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={jellyTap}
-            onClick={() => {
-              setCompassInitialDomain(undefined);
-              setIsCompassModalOpen(true);
-            }}
-            className="flex items-center space-x-2.5 px-6 py-3 rounded-full bg-black text-white border border-neutral-800 hover:border-neutral-600 shadow-[0_12px_40px_rgba(0,0,0,0.35)] transition-all font-mono text-xs tracking-wider uppercase group cursor-pointer"
-          >
-            <Compass className="w-4 h-4 text-white stroke-[2.2] group-hover:rotate-45 transition-transform duration-300" />
-            <span className="font-semibold">TASTE COMPASS</span>
-          </motion.button>
-        </motion.div>
-      )}
-
-      {/* Taste Compass Modal (4 Recommendation Modes) */}
-      <TasteCompassModal
-        isOpen={isCompassModalOpen}
-        onClose={() => setIsCompassModalOpen(false)}
-        shelves={shelves}
-        onPinRecommendation={handlePinRecommendation}
-        initialDomain={compassInitialDomain}
-      />
-    </div>
+       <AddFlowChooserModal isOpen={isAddMenuOpen} onClose={() => setIsAddMenuOpen(false)} onChooseNote={() => { setIsAddMenuOpen(false); setAddFlow("note"); }} onChooseRecord={() => { setIsAddMenuOpen(false); setAddFlow("record"); }} onChooseVibe={() => { setIsAddMenuOpen(false); setAddFlow("vibe"); }} />
+       <NoteFlowModal isOpen={addFlow === "note"} onClose={() => setAddFlow(null)} onSave={addCanvasItem} onConvert={convertCanvasItem} />
+       <RecordFlowModal isOpen={addFlow === "record"} onClose={() => setAddFlow(null)} onSave={addCanvasItem} />
+       <CreateVibeModal isOpen={addFlow === "vibe"} onClose={() => setAddFlow(null)} onCreate={(vibe) => { persistVibes([...vibes, vibe]); setAddFlow(null); }} />
+      {activeShelf && <SmartAddModal domain={activeShelf.domain} shelfId={activeShelf.id} isOpen={isMediaSearchOpen} onClose={() => setIsMediaSearchOpen(false)} onItemAdded={(item) => addItemToShelf({ ...item, memoryType: "media" }, activeShelf.id)} />}
+      <TasteCompassModal isOpen={isCompassOpen} onClose={() => setIsCompassOpen(false)} shelves={shelves} onPinRecommendation={handlePinRecommendation} initialDomain={compassDomain} />
+      <div className="board-search-hint"><Search size={13} /> <span>everything here can become a thread</span></div>
+    </main>
   );
 }

@@ -1,191 +1,121 @@
 # 🏛️ TasteMem — System Architecture & Technical Specifications
 
-This document defines the technical architecture, data flows, external service integrations, and runtime boundaries of **TasteMem**.
+TasteMem is an AI-powered taste memory canvas and cultural discovery engine that transforms personal life notes and cultural memories into custom vibe shelves, fueling serendipitous recommendations via Qloo's 575M+ entity cultural graph.
 
 ---
 
-## 1. System Overview & Component Diagram
+## 1. System Topology & Architecture Diagram
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                   PRESENTATION LAYER (Mobile App / PWA)                │
-│                                                                        │
-│   ┌─────────────────────┐  ┌─────────────────────┐  ┌────────────────┐ │
-│   │ Visual Shelves Grid │  │ Universal Smart Add │  │ Recs / Go Wild │ │
-│   │ (Anime, Films, etc) │  │ (Auto-detect + art) │  │ (4 Mode Engine)│ │
-│   └──────────┬──────────┘  └──────────┬──────────┘  └────────┬───────┘ │
-│              └────────────────────────┼──────────────────────┘         │
-└───────────────────────────────────────┼────────────────────────────────┘
-                                        │ HTTP / JSON
-                                        ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                   BACKEND ENGINE LAYER (FastAPI / Python)              │
-│                                                                        │
-│   ┌────────────────────────────────────────────────────────────────┐   │
-│   │ /api/search/detect                                             │   │
-│   │ Detects category, queries Metadata API, returns posters + desc │   │
-│   └────────────────────────────────┬───────────────────────────────┘   │
-│                                    │                                   │
-│   ┌────────────────────────────────▼───────────────────────────────┐   │
-│   │ /api/shelves (CRUD)                                            │   │
-│   │ Persists items to SQLite / Local Store + triggers Qloo link   │   │
-│   └────────────────────────────────┬───────────────────────────────┘   │
-│                                    │                                   │
-│   ┌────────────────────────────────▼───────────────────────────────┐   │
-│   │ /api/recommendations                                           │   │
-│   │ Traverses user taste UUIDs via Qloo /v2/insights               │   │
-│   │ Supports: "More Like This", "Surprise", "Go Wild", "Trip"      │   │
-│   └────────────────────────────────┬───────────────────────────────┘   │
-└────────────────────────────────────┼───────────────────────────────────┘
-                                     │
-           ┌─────────────────────────┴────────────────────────┐
-           ▼                                                  ▼
-┌───────────────────────────────────────┐  ┌───────────────────────────────────┐
-│     EXTERNAL MEDIA & METADATA APIS    │  │       QLOO CULTURAL AI GATEWAY    │
-│                                       │  │                                   │
-│ • Anime: AniList GraphQL              │  │ Base: https://hackathon.api.qloo.com
-│ • Movies/TV: TMDB API                 │  │ Auth: X-Api-Key: <QLOO_API_KEY>   │
-│ • Music: Deezer API                   │  │                                   │
-│ • Books: Google Books API             │  │ • /search (Entity UUID resolution)│
-│ • Places: Geoapify / Wikimedia        │  │ • /v2/insights (Taste correlations)
-└───────────────────────────────────────┘  └───────────────────────────────────┘
-```
+```mermaid
+flowchart TB
+    subgraph Client [TasteMem Client (Web & Capacitor Native)]
+        Canvas[Infinite Vibe Canvas & Liquid Spring Blocks]
+        PostIts[Typographic Memory Post-Its]
+        CompassModal[Taste Compass 4-Mode Modal]
+        LocalStore[(Browser LocalStorage)]
+        SyncBridge[Offline-First SyncBridge]
+    end
 
----
+    subgraph FirebaseServices [Google Cloud Firebase (weekendsahal)]
+        FAuth[Firebase Auth: Anonymous & Google Linking]
+        Firestore[(Cloud Firestore DB)]
+    end
 
-## 2. External API Architecture & Media Pipeline
+    subgraph NextBackend [Next.js Server API Gateway]
+        VibeAPI["/api/vibe (POST) - Vibe Ingestion"]
+        RecsAPI["/api/recommendations (GET) - 4-Mode Engine"]
+        SearchAPI["/api/search (GET) - Multi-Tier Search"]
+        ResolveAPI["/api/qloo/resolve (GET) - Canonical Resolver"]
+    end
 
-To keep the application **100% free, fast, and reliable** without vendor billing risks, TasteMem integrates the following media providers:
+    subgraph AIAndCulture [Cultural AI & Knowledge Graphs]
+        GeminiFlash[Google Gemini 2.5 Flash]
+        QlooGraph[Qloo Cultural Graph: /v2/insights]
+        QlooSearch[Qloo Search: /search]
+    end
 
-### 2.1 Media & Metadata Providers Table
+    subgraph MediaPipelines [Multi-Tier Media Artwork & Metadata]
+        AnimeAPI[AniList GraphQL + Jikan MAL v4]
+        CinemaAPI[TMDB + TVMaze + OMDb + iTunes Movie]
+        MusicAPI[iTunes + Deezer]
+        BooksAPI[Google Books + Open Library]
+        PlacesAPI[Qloo Places + Photon OSM]
+    end
 
-| Domain | Selected API | Base URL | Auth Mechanism | Rate Limit | Returned Assets |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Anime** | **AniList GraphQL** | `https://graphql.anilist.co` | None (Public POST) | 90 req/min | High-res Cover (`coverImage.extraLarge`), banner, synopsis, genres, score |
-| **Movies & TV** | **TMDB API** | `https://api.themoviedb.org/3` | Free API Key (Instant) | ~40 req/10s | Poster paths (`image.tmdb.org/t/p/w500/...`), backdrop, release year, overview |
-| **Music** | **Deezer API** | `https://api.deezer.com` | **Zero Auth** (Direct GET) | ~50 req/5s | Album cover (`cover_xl`), artist portrait (`picture_xl`), preview audio |
-| **Books** | **Google Books** | `https://www.googleapis.com/books/v1` | Free Key / None | 1,000 req/day | Cover image (`thumbnail`), author, publication year, description |
-| **Places / Cafés** | **Geoapify Places** | `https://api.geoapify.com/v2/places` | Free Key (No Credit Card) | 3,000 req/day | Coordinates, category, address, POI metadata |
-| **Place Photos** | **Wikimedia / OpenTripMap** | `https://api.opentripmap.com/0.1` | Free Key / None | Generous | High-res Wikimedia Commons photography for landmarks and districts |
+    Canvas <--> LocalStore
+    LocalStore <--> SyncBridge
+    SyncBridge <--> FAuth
+    SyncBridge <--> Firestore
 
----
+    Canvas --> VibeAPI
+    CompassModal --> RecsAPI
+    Canvas --> SearchAPI
 
-## 3. Qloo Cultural Intelligence Integration
+    VibeAPI --> GeminiFlash
+    VibeAPI --> QlooSearch
+    RecsAPI --> QlooGraph
 
-All cultural affinity calculations and taste graph traversals are executed via the official hackathon gateway:
-
-- **Base URL:** `https://hackathon.api.qloo.com`
-- **Required Header:** `X-Api-Key: <QLOO_API_KEY>`
-
-### 3.1 Entity Resolution Pipeline (`/search`)
-When a user adds an item (e.g., *"Attack on Titan"* or *"Blue Bottle Coffee"*), TasteMem queries Qloo `/search`:
-```http
-GET https://hackathon.api.qloo.com/search?query=Attack+on+Titan&types=urn:entity:tv_show&take=1
-X-Api-Key: <QLOO_API_KEY>
-```
-The returned `entity_id` (canonical UUID) is stored alongside the item metadata in the local shelf entry.
-
-### 3.2 Taste Profile Aggregation
-The user's taste profile is an array of their collected Qloo entity UUIDs, grouped or filtered by shelf category:
-```json
-{
-  "user_taste_signals": [
-    "c8a1496a-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-    "f2b38190-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-    "99e12014-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  ]
-}
-```
-
-### 3.3 The 4 Recommendation Modes via `/v2/insights`
-
-#### Mode 1: "More Like This" (Direct Taste Affinity)
-- **Target Filter:** Same domain as the reference shelf (e.g., `filter.type: urn:entity:movie`).
-- **Input Signals:** `signal.interests.entities: <uuid_1>,<uuid_2>`
-- **Sorting:** `sort_by=affinity`
-
-#### Mode 2: "Surprise Me" (Indie / Hidden Gems)
-- **Target Filter:** Same domain.
-- **Popularity Cap:** `filter.popularity.max: 0.60` (filters out mainstream blockbusters).
-- **Result:** High cultural affinity with undiscovered/indie titles.
-
-#### Mode 3: "Go Wild" (Cross-Domain Bridge)
-- **Concept:** User passes Anime and Dining UUIDs, but requests recommendations in **Books**, **Fashion**, or **Music**:
-```http
-GET https://hackathon.api.qloo.com/v2/insights?filter.type=urn:entity:book&signal.interests.entities=UUID_ANIME_1,UUID_RESTAURANT_2&sort_by=affinity&take=5
-X-Api-Key: <QLOO_API_KEY>
-```
-- **Result:** Empirically proven correlations (e.g., Ghibli fans who love specialty pour-overs correlate with Haruki Murakami literature and Japanese ceramic brands).
-
-#### Mode 4: "Trip & City Guide" (Location-Grounded)
-- **Concept:** Evaluates universal user taste against local venues in a target city:
-```http
-GET https://hackathon.api.qloo.com/v2/insights?filter.type=urn:entity:restaurant&filter.location=Tokyo&signal.interests.entities=UUID_1,UUID_2&sort_by=affinity&take=5
-X-Api-Key: <QLOO_API_KEY>
+    SearchAPI --> AnimeAPI
+    SearchAPI --> CinemaAPI
+    SearchAPI --> MusicAPI
+    SearchAPI --> BooksAPI
+    SearchAPI --> PlacesAPI
 ```
 
 ---
 
-## 4. Data Models & Schemas
+## 2. Core Subsystems
 
-### 4.1 Shelf Item Schema (`Item`)
-```python
-from pydantic import BaseModel
-from typing import Optional, List
+### 2.1 Universal Ingestion & Gemini AI Vibe Engine (`/api/vibe`)
+- **Model**: `gemini-2.5-flash` via official `@google/genai` SDK.
+- **Role**: Ingests raw personal memories ("went for a brisk morning run in the misty rain...") or unverified cultural titles.
+- **Outputs**:
+  1. Semantic destination shelf (routes into existing shelves e.g. "Morning Fun", or synthesizes a new custom vibe shelf).
+  2. Domain classification (`anime`, `movies`, `music`, `books`, `places`).
+  3. Evocative atmospheric tags (`["misty", "dawn", "lo-fi", "outdoor"]`).
+  4. Plain-English mood reasoning.
+  5. Canonical cultural search seeds for Qloo graph queries.
 
-class ShelfItem(BaseModel):
-    id: str                         # Local unique ID (UUID)
-    shelf_id: str                   # "anime", "movies", "music", "books", "places"
-    title: str                      # e.g., "Spirited Away"
-    subtitle: Optional[str]         # e.g., "Hayao Miyazaki, 2001"
-    cover_image_url: str            # High-res poster or artwork URL
-    description: Optional[str]      # Short synopsis or overview
-    user_note: Optional[str]        # Short personal memory / note
-    qloo_entity_id: Optional[str]   # Canonical Qloo UUID
-    tags: List[str] = []            # e.g., ["Fantasy", "Comfort", "Anime"]
-    rating_or_status: Optional[str] # e.g., "Favorite", "Rewatched"
-    created_at: str
-```
+### 2.2 Taste Compass 4-Mode Recommendation Engine (`/api/recommendations`)
+- **Gateway**: Targets Qloo's Hackathon endpoint (`https://hackathon.api.qloo.com/v2/insights`) with custom DNS optimization for resilient network resolution.
+- **The 4 Modes**:
+  1. `more_like_this`: Direct high-affinity cultural resonance.
+  2. `surprise_me`: Strict indie filtering (`popularity <= 0.60`, fallback to `0.75`).
+  3. `go_wild`: Cross-domain leap (translates personal vibe into alternate artistic mediums e.g. run vibe -> ambient techno vinyl).
+  4. `trip_guide`: Geographically grounds user shelf vibe into destination city WKT bounding polygons (Tokyo, Kyoto, London, Paris, NYC, Berlin, SF, LA, Rome, Seoul, Amsterdam).
 
-### 4.2 Shelf Collection Schema (`Shelf`)
-```python
-class Shelf(BaseModel):
-    id: str                         # e.g., "anime"
-    name: str                       # e.g., "Anime Watched"
-    icon: str                       # Lucide icon identifier: "film", "tv", "book", "disc", "map-pin"
-    domain: str                     # "anime", "film", "music", "book", "place"
-    items: List[ShelfItem] = []
-    total_count: int = 0
-```
+### 2.3 Cloud Firestore Database & Schema Architecture
+- **Project**: `weekendsahal` (Free-tier `FIRESTORE_NATIVE` in `nam5`).
+- **Hierarchical Scoping**:
+  - `/users/{userId}`: User profile and sync metadata.
+  - `/users/{userId}/shelves/{shelfId}`: Vibe shelves (title, domain, itemCount, colorTheme, position, createdAt).
+  - `/users/{userId}/shelves/{shelfId}/items/{itemId}`: Media & memory items (title, coverImageUrl, description, userNote, qlooEntityId, domain, rating, memoryStyle, memoryShape, memoryTone, createdAt).
+  - `/users/{userId}/canvas_items/{itemId}`: Free-floating notes on the whiteboard canvas.
+- **Security Rules (`firestore.rules`)**: Version 2 rules enforcing strict user isolation (`request.auth.uid == userId`) and domain validation.
 
-### 4.3 Recommendation Request & Response
-```python
-class RecommendationRequest(BaseModel):
-    mode: str                       # "more_like_this" | "surprise" | "go_wild" | "trip"
-    target_category: Optional[str]  # Target domain or "any"
-    location: Optional[str]         # e.g., "Tokyo", "London", or None
-    seed_item_ids: Optional[List[str]] = None # Optional subset of items to anchor on
+### 2.4 Offline-First Sync Layer (`src/lib/firebase/syncBridge.ts`)
+- **Zero-Latency Local First**: Immediate write to `localStorage` ensures 60 FPS snappy UI response.
+- **Background Cloud Synchronization**: Non-blocking asynchronous sync pushes local mutations to Firestore and subscribes to remote snapshots for multi-device sync across Android, iOS, and Web.
+- **Anonymous Authentication**: Frictionless onboarding without forced login screens, with optional Google account linking for cross-device persistence.
 
-class RecommendationResult(BaseModel):
-    title: str
-    category: str
-    cover_image_url: Optional[str]
-    description: str
-    affinity_score: float           # e.g., 0.88 (88%)
-    qloo_entity_id: str
-    taste_reasoning: str            # Explaining the cultural bridge to user's shelves
-```
+### 2.5 Multi-Tier Media & Artwork Fallback Pipeline
+To ensure search and cover art never break regardless of API limits:
+- **Anime**: Tier 1: AniList GraphQL -> Tier 2: Jikan (MyAnimeList v4) -> Unsplash.
+- **Movies**: Tier 1: TMDB API -> Tier 2: TVMaze (100% free HD posters) -> Tier 3: OMDb -> Tier 4: iTunes Movie.
+- **Music**: Tier 1: iTunes Search (HD 600x600) -> Tier 2: Deezer Search.
+- **Books**: Tier 1: Google Books API -> Tier 2: Open Library Covers API.
+- **Places**: Tier 1: Qloo Places Graph -> Tier 2: Photon (OpenStreetMap).
 
 ---
 
-## 5. Storage Strategy
+## 3. Technology Stack Summary
 
-- **Local-First SQLite & Browser Storage:** Stored in browser `localStorage` (`tastemem_shelves_v1`) and optionally synchronized with `data/tastemem.db` via SQLAlchemy / SQLModel.
-- **Fast In-Memory Cache:** In-memory caching for metadata API results (AniList/TMDB responses) to minimize external network round-trips.
-- **Export / Import:** 1-click JSON export/import for zero-setup data portability across devices.
-
----
-
-## 6. Deliverables Specification Reference
-
-For the comprehensive end-to-end specifications of all delivered features, the 4 recommendation modes, verification checklists, and hackathon presentation protocols, see [DELIVERABLES.md](DELIVERABLES.md).
+| Layer | Technology | Key Capabilities |
+| :--- | :--- | :--- |
+| **Frontend Framework** | Next.js 15.1.7 (App Router), React 19 | Responsive Web, PWA, Server-Side API routes |
+| **Styling & Physics** | Tailwind CSS, Framer Motion | Nothing-OS monochrome aesthetic, liquid spring physics |
+| **Native Mobile** | Capacitor Android (Kotlin Compose wrapper) | Cross-platform native APK & iOS readiness |
+| **Cloud Backend** | Google Cloud Firebase | Auth (Anonymous & OAuth), Cloud Firestore |
+| **LLM Reasoning** | Google Gemini 2.5 Flash (`@google/genai`) | High-speed structured JSON note analysis |
+| **Cultural AI Graph**| Qloo Cultural AI Hackathon API | 575M+ entity cross-domain affinity graph |
+| **Media APIs** | AniList, Jikan, TMDB, TVMaze, iTunes, Deezer, OpenLibrary | Multi-tier cover art and metadata discovery |

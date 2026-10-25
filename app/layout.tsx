@@ -2,13 +2,20 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TasteMem — Personal Cultural Shelf",
-  description: "Organize your taste visually in liquid monochrome. Powered by Qloo Cultural AI.",
+  title: "TasteMem — Living Archive",
+  description: "A tactile whiteboard for the things you want to remember.",
+  applicationName: "TasteMem",
+  appleWebApp: {
+    capable: true,
+    title: "TasteMem",
+    statusBarStyle: "default",
+  },
 };
 
 export const viewport: Viewport = {
   themeColor: "#ffffff",
   width: "device-width",
+  viewportFit: "cover",
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,

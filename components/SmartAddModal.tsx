@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Domain, SearchResultItem, ShelfItem } from "@/types";
 import { X, Search, Loader2, Check, Sparkles } from "lucide-react";
@@ -27,6 +27,14 @@ export const SmartAddModal: React.FC<SmartAddModalProps> = ({
   const [selectedResult, setSelectedResult] = useState<SearchResultItem | null>(null);
   const [userNote, setUserNote] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const resetAndClose = useCallback(() => {
+    setQuery("");
+    setResults([]);
+    setSelectedResult(null);
+    setUserNote("");
+    onClose();
+  }, [onClose]);
 
   // Debounced search
   useEffect(() => {
@@ -65,7 +73,7 @@ export const SmartAddModal: React.FC<SmartAddModalProps> = ({
       window.addEventListener("keydown", handleKeyDown);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+  }, [isOpen, resetAndClose]);
 
   const handleSave = async () => {
     if (!selectedResult) return;
@@ -110,14 +118,6 @@ export const SmartAddModal: React.FC<SmartAddModalProps> = ({
     onItemAdded(newItem);
     setSaving(false);
     resetAndClose();
-  };
-
-  const resetAndClose = () => {
-    setQuery("");
-    setResults([]);
-    setSelectedResult(null);
-    setUserNote("");
-    onClose();
   };
 
   if (!isOpen) return null;

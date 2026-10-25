@@ -3,7 +3,19 @@
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Domain, Shelf, ShelfItem } from "@/types";
-import { ArrowLeft, Plus, Tv, Film, Disc, Book, MapPin, Trash2, Compass } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Tv,
+  Film,
+  Disc,
+  Book,
+  MapPin,
+  Trash2,
+  Compass,
+  Star,
+  Sparkles,
+} from "lucide-react";
 import { liquidSpring, jellyTap } from "@/lib/physics";
 
 interface ShelfDetailViewProps {
@@ -13,6 +25,7 @@ interface ShelfDetailViewProps {
   onDeleteItem: (shelfId: string, itemId: string) => void;
   onDeleteShelf?: (shelfId: string) => void;
   onOpenCompass?: (domain: Domain) => void;
+  onSetCoverItem?: (shelfId: string, itemId: string) => void;
 }
 
 const DOMAIN_ICONS: Record<string, React.ElementType> = {
@@ -30,8 +43,10 @@ export const ShelfDetailView: React.FC<ShelfDetailViewProps> = ({
   onDeleteItem,
   onDeleteShelf,
   onOpenCompass,
+  onSetCoverItem,
 }) => {
   const IconComponent = DOMAIN_ICONS[shelf.domain] || Tv;
+  const activeCoverId = shelf.coverItemId || shelf.items[0]?.id;
 
   // Escape key to navigate back to canvas
   useEffect(() => {
@@ -64,7 +79,7 @@ export const ShelfDetailView: React.FC<ShelfDetailViewProps> = ({
         <motion.button
           whileTap={jellyTap}
           onClick={onBack}
-          className="flex items-center space-x-2 px-3 py-1.5 rounded-full border border-white/10 hover:border-white/30 bg-neutral-950 text-neutral-300 hover:text-white transition-all text-xs font-mono tracking-wider uppercase"
+          className="flex items-center space-x-2 px-3 py-1.5 rounded-full border border-white/10 hover:border-white/30 bg-neutral-950 text-neutral-300 hover:text-white transition-all text-xs font-mono tracking-wider uppercase cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>CANVAS</span>
@@ -90,7 +105,7 @@ export const ShelfDetailView: React.FC<ShelfDetailViewProps> = ({
             <button
               onClick={handleDeleteShelf}
               title="Delete Shelf"
-              className="w-8 h-8 rounded-full bg-neutral-950 border border-neutral-800 hover:border-red-500/40 text-neutral-500 hover:text-red-400 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-full bg-neutral-950 border border-neutral-800 hover:border-red-500/40 text-neutral-500 hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -108,77 +123,109 @@ export const ShelfDetailView: React.FC<ShelfDetailViewProps> = ({
             <div>
               <h2 className="text-white text-base font-medium">Vault is currently empty</h2>
               <p className="text-neutral-500 text-sm mt-1 max-w-sm">
-                Tap the liquid add button below to search {shelf.domain} and add to this shelf.
+                Tap the add button below to search {shelf.domain} and add entries to this vault.
               </p>
             </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
             <AnimatePresence>
-              {shelf.items.map((item) => (
-                <motion.div
-                  key={item.id}
-                  layout
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={liquidSpring}
-                  className="group relative rounded-2xl bg-neutral-950 border border-white/10 hover:border-white/25 overflow-hidden flex flex-col justify-between shadow-lg transition-all"
-                >
-                  {/* Poster / Artwork Container */}
-                  <div className="relative aspect-[2/3] w-full overflow-hidden bg-neutral-900">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.coverImageUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
+              {shelf.items.map((item) => {
+                const isCover = item.id === activeCoverId;
 
-                    {/* Top Overlay Badge: Year & Delete action */}
-                    <div className="absolute top-2 left-2 right-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      {item.year ? (
-                        <span className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-md border border-white/15 text-white">
-                          {item.year}
-                        </span>
-                      ) : <span />}
+                return (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={liquidSpring}
+                    className={`group relative rounded-2xl bg-neutral-950 border overflow-hidden flex flex-col justify-between shadow-lg transition-all ${
+                      isCover
+                        ? "border-white/50 ring-1 ring-white/30"
+                        : "border-white/10 hover:border-white/25"
+                    }`}
+                  >
+                    {/* Poster / Artwork Container */}
+                    <div className="relative aspect-[2/3] w-full overflow-hidden bg-neutral-900">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.coverImageUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteItem(shelf.id, item.id);
-                        }}
-                        className="w-6 h-6 rounded-full bg-black/80 border border-red-500/30 text-neutral-400 hover:text-red-400 flex items-center justify-center transition-colors"
-                        title="Delete item"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {/* Top Overlay Badge: Year & Delete action */}
+                      <div className="absolute top-2 left-2 right-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        {item.year ? (
+                          <span className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-black/80 backdrop-blur-md border border-white/15 text-white">
+                            {item.year}
+                          </span>
+                        ) : (
+                          <span />
+                        )}
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteItem(shelf.id, item.id);
+                          }}
+                          className="w-6 h-6 rounded-full bg-black/80 border border-red-500/30 text-neutral-400 hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer"
+                          title="Delete item"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      {/* Bottom Overlay: Active Vault Poster Badge or Set As Poster Button */}
+                      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between z-10">
+                        {isCover ? (
+                          <div className="flex items-center space-x-1 px-2.5 py-0.5 rounded-full bg-white text-black font-mono text-[9px] font-bold tracking-wider shadow-md">
+                            <Star className="w-2.5 h-2.5 fill-black" />
+                            <span>VAULT POSTER</span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSetCoverItem?.(shelf.id, item.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 flex items-center space-x-1 px-2 py-0.5 rounded-full bg-black/85 hover:bg-white hover:text-black border border-white/25 text-neutral-300 font-mono text-[9px] tracking-wider transition-all cursor-pointer shadow-md"
+                            title="Set as vault cover poster"
+                          >
+                            <Sparkles className="w-2.5 h-2.5" />
+                            <span>SET AS POSTER</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Metadata and Human Memory Plaque */}
-                  <div className="p-3.5 flex flex-col justify-between flex-1 bg-neutral-950">
-                    <div>
-                      <h3 className="text-white font-medium text-sm leading-snug line-clamp-1">
-                        {item.title}
-                      </h3>
-                      {item.subtitle && (
-                        <p className="text-neutral-500 text-xs mt-0.5 line-clamp-1">
-                          {item.subtitle}
-                        </p>
+                    {/* Metadata and Human Memory Plaque */}
+                    <div className="p-3.5 flex flex-col justify-between flex-1 bg-neutral-950">
+                      <div>
+                        <h3 className="text-white font-medium text-sm leading-snug line-clamp-1">
+                          {item.title}
+                        </h3>
+                        {item.subtitle && (
+                          <p className="text-neutral-500 text-xs mt-0.5 line-clamp-1">
+                            {item.subtitle}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Personal Human Note */}
+                      {item.userNote && (
+                        <div className="mt-2.5 pt-2 border-t border-white/[0.06]">
+                          <p className="text-neutral-300 text-[11px] italic leading-relaxed line-clamp-2">
+                            “{item.userNote}”
+                          </p>
+                        </div>
                       )}
                     </div>
-
-                    {/* Personal Human Note */}
-                    {item.userNote && (
-                      <div className="mt-2.5 pt-2 border-t border-white/[0.06]">
-                        <p className="text-neutral-300 text-[11px] italic leading-relaxed line-clamp-2">
-                          “{item.userNote}”
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </AnimatePresence>
           </div>
         )}

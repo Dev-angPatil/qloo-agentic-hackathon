@@ -1,101 +1,104 @@
-# 🧠 TasteMem — Your Personal Cultural Shelf
+# 🧠 TasteMem — Vision & Final Outcome Specification
 
-> **Every experience you've loved, organized visually. Cross-domain recommendations, powered by Qloo's Cultural AI.**
-
----
-
-## 1. Product Vision & Executive Summary
-
-Modern consumers explore culture across disconnected silos:
-- Anime tracked on **MyAnimeList**
-- Movies logged on **Letterboxd**
-- Books rated on **Goodreads**
-- Music tracked on **Spotify**
-- Cafés and restaurants saved in **Google Maps** or **Instagram bookmarks**
-
-None of these platforms talk to each other. None of them understand a user's taste as a unified, multifaceted identity. When someone asks:
-- *"What should I watch tonight?"*
-- *"Where should I eat in Tokyo?"*
-- *"Recommend me something wild based on what I like"*
-
-...traditional recommendation engines offer generic trending lists or hallucinate responses without cultural grounding.
-
-**TasteMem** solves this by turning personal cultural logging into an effortless, visual experience. Users store things they have enjoyed or experienced—anime watched, movies seen, places visited, books read, music discovered—in clean, visual "Shelves" with cover art, titles, and personal one-liners. 
-
-Behind the scenes, every logged item is mapped to **Qloo's 575M+ entity cultural graph**. When the user asks for recommendations, an AI intelligence layer translates their intent into structured queries, using their accumulated taste graph to deliver empirically grounded, cross-domain recommendations.
+> **"You experience something you love — a film, an album, a café, or just a morning run. You speak or type it in. The AI understands the vibe, files it into your custom life shelves, and unlocks grounded cultural discoveries you never saw coming."**
 
 ---
 
-## 2. Target User Experience & User Stories
+## 1. What TasteMem Actually Is
 
-### Target User: The Culturally Curious Explorer
-Someone who enjoys diverse cultural pursuits (e.g., watches anime, loves artisan dining, listens to indie music, reads speculative fiction) and wants:
-1. A single tactile, visual home for their cultural memories.
-2. Immediate gratification: seeing beautiful poster cards and personal notes rather than plain text notes.
-3. Recommendations that respect their actual taste and surprise them across categories.
+TasteMem is **not** a rigid category filing cabinet (it doesn't pigeonhole your life into generic folders like "Anime" or "Books").
 
-### Primary User Stories
-1. **Visual Shelf Logging:** As a user, I can quickly search or type an anime or movie (e.g., *"Spirited Away"*), instantly view its high-res cover art and description, add my short note (*"comfort watch on rainy nights"*), and pin it to my visual shelf.
-2. **Effortless Multi-Category Memory:** As a user, I can switch between shelves—*Anime Watched*, *Films & Shows*, *Places & Cafés Visited*, *Music in Rotation*, *Books Read*—all formatted as clean, visual cards.
-3. **Cross-Domain "Go Wild" Recommendations:** As a user, I can ask for recommendations outside my usual categories (e.g., *"Recommend me something wild based on my anime and food shelves"*), prompting the app to traverse Qloo's taste graph and recommend correlated literature, brands, or travel destinations.
-4. **Taste Profile Fingerprint:** As a user, I can view an auto-generated visual summary of my cultural affinities without filling out tedious onboarding questionnaires.
+Instead, TasteMem organizes your life into **custom vibe shelves** reflecting your real-world lifestyle and moods:
+- 🌅 **"Morning Fun"** *(morning runs, espresso recipes, ambient playlists, breakfast diners)*
+- 🌙 **"Midnight Delight"** *(late-night neon anime, synthwave records, ramen joints, noir fiction)*
+- 🧘 **"Deep Focus"** *(minimalist essays, lo-fi beats, quiet study cafés)*
+- ⚡ **"Adrenaline & Grit"** *(intense cinema, workout tracks, high-energy gaming)*
 
----
+You can drop in **anything**:
+1. **Specific Cultural Media:** A film (*"Spirited Away"*), an album (*"In Rainbows"*), a book (*"Norwegian Wood"*), or a café (*"Omotesando Koffee"*).
+2. **Personal Life Notes & Experiences:** A raw feeling or daily memory (*"went to run this morning in the park. loved the misty air, felt super alive"*).
 
-## 3. Core-First Product Architecture
-
-To maintain zero clutter and high execution velocity, the product focuses on two essential loops:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    1. INGESTION LOOP                    │
-│ User adds title ➔ Free Metadata API fetches poster      │
-│ ➔ Qloo /search resolves canonical UUID ➔ Added to Shelf  │
-└──────────────────────────┬──────────────────────────────┘
-                           │ Accumulates Taste Graph
-                           ▼
-┌─────────────────────────────────────────────────────────┐
-│                  2. RECOMMENDATION LOOP                 │
-│ User picks Mode ("Safe", "Surprise", "Go Wild")         │
-│ ➔ Qloo /v2/insights traverses cross-domain affinities   │
-│ ➔ Real entity cards returned with affinity percentage   │
-└─────────────────────────────────────────────────────────┘
-```
+TasteMem understands the mood, aesthetic, and cultural undertones of your input, auto-places it onto the appropriate vibe shelf, and uses it to fuel serendipitous cultural recommendations.
 
 ---
 
-## 4. The 4 Recommendation Modes
+## 2. The Core User Flows & Screen Mechanics
 
-1. **"More Like This" (Direct Match):**
-   - Direct high-affinity recommendations within the same domain (e.g., user loves *Attack on Titan* ➔ recommends *Vinland Saga*).
-2. **"Surprise Me" (Adjacent Indie Discovery):**
-   - Discovers hidden gems by filtering for lower entity popularity (`filter.popularity.max: 0.60`) with moderate-to-high taste correlation.
-3. **"Go Wild" (Cross-Domain Leap):**
-   - Bridges disparate interests (e.g., combines *Studio Ghibli* + *Artisan Ramen* tastes to recommend *Japanese Ceramic Studios* or *Specialty Tea Houses* via Qloo cross-category affinity).
-4. **"Trip & City Guide" (Location Grounding):**
-   - Applies the user's universal taste fingerprint to a specific destination coordinate or city name (`filter.location`).
-
----
-
-## 5. Anti-Clutter & Anti-Bloat Manifesto
-
-In accordance with core-first design principles, TasteMem will explicitly **NOT** include:
-- ❌ Social feeds, followers, comments, or likes (this is an intimate personal memory vault).
-- ❌ Complex rich-text formatting, Markdown editors, or nested folders.
-- ❌ Tedious onboarding quizzes (taste forms naturally as items are logged).
-- ❌ Account creation walls or third-party auth setups during MVP phase.
-- ❌ Ad networks or sponsored affiliate popups.
+### 2.1 The Canvas (Home Screen)
+- **Visual Aesthetic:** Clean, stark white background (`#FFFFFF`) with smooth, dark squircle tiles (`#000000` / `#121212`) floating freely.
+- **Physical Dynamics:** Tiles have authentic, tactile liquid spring physics (squish, stretch, and organic micro-jiggle on touch).
+- **First Launch Experience:**
+  - Zero mandatory login screens. The user lands directly on a stark, inviting canvas.
+  - An initial welcoming pill: *"Tap + to log your first memory or feeling"*. Shelves materialize dynamically as the user starts logging.
+- **Persistent Controls:** Two minimal floating action pills at the bottom:
+  - **`+ ADD`** (Log a thought, experience, or piece of media)
+  - **`◎ COMPASS`** (Explore cultural recommendations)
 
 ---
 
-## 6. Success Metrics for Hackathon Demo
-
-1. **Cold-Start to Wow:** An empty app reaches a populated, gorgeous multi-shelf visual state in under 60 seconds.
-2. **Cross-Domain Affinity Proof:** Demonstrating that logging 3 anime titles and 2 cafés successfully influences book or music recommendations with verifiable Qloo affinity scores.
-3. **Zero Hallucination:** 100% of recommended items correspond to verified cultural entities in Qloo's 575M+ database.
+### 2.2 The Universal Ingestion Flow ("Drop In Anything")
+- **The Trigger:** Tapping **`+ ADD`** opens an effortless, full-focus bottom sheet.
+- **Input Methods:**
+  - **Type freely:** User begins typing whatever they want.
+  - **One-Tap Floating Mic:** Tap the minimal mic pill to speak aloud; on-device speech-to-text transcribes their thought instantly into the field.
+- **Intelligent Classification & Real-Time Feedback:**
+  - **If the user enters a cultural title (film, song, place, anime, book):**
+    - Live search results show official high-resolution cover art immediately.
+    - Selecting it attaches the verified cover and canonical **Qloo entity UUID**.
+    - User can add a quick 1-line note or star rating.
+  - **If the user enters a personal life experience note ("went for a run this morning..."):**
+    - The AI analyzes the note, extracts the vibe/mood signals (e.g. *energized, morning, outdoor, mindful*), and flags it for shelf routing.
+    - If the user types a niche/unmatched entity, it saves as a **Custom Memory** with a sleek typographic monogram.
+- **Auto-Placement into Vibe Shelves:**
+  - The AI compares the new memory against existing shelves (e.g., routing the morning run into *"Morning Fun"*).
+  - If no suitable shelf exists, TasteMem creates a brand-new custom vibe shelf automatically.
+  - A subtle pill shows the destination shelf with a one-tap option to redirect if desired.
+- **The Save Moment:**
+  - Tapping **Save** triggers an elastic physical animation flying the card into its shelf.
 
 ---
 
-## 7. Deliverables & Hackathon Blueprint
+### 2.3 The Shelf View (Life Vibe Gallery)
+- Opening a shelf (e.g., *"Morning Fun"* or *"Midnight Delight"*) reveals a unified, aesthetic collection:
+  - **Media Items:** Beautiful visual cover posters.
+  - **Personal Life Notes:** Minimalist, high-contrast **typographic post-it cards** displaying the raw text, timestamp, and subtle mood tags.
+- Tapping any card opens a clean tactile bottom sheet with full details, notes, and one-tap options to edit or remove.
 
-For the comprehensive end-to-end specifications, user journeys, video demo scripts, and hackathon submission requirements, refer to the master [DELIVERABLES.md](DELIVERABLES.md).
+---
+
+### 2.4 The Taste Compass (Cultural AI Engine)
+- **The Trigger:** Tapping **`◎ COMPASS`** from the main canvas or within any specific shelf.
+- **How it Works with Personal Life Notes:**
+  - The AI synthesizes cultural signals from your life notes (e.g., *morning runs + outdoor energy + pour-over coffee notes*) into structured cultural search seeds.
+  - Traverses **Qloo's 575M+ entity cultural graph** (`/v2/insights`) to recommend real, verifiable media and spots.
+- **The 4 Exploration Modes:**
+  1. **"More Like This"** — Direct high-affinity matches for your current vibe.
+  2. **"Surprise Me"** — High taste correlation with lower mainstream popularity (indie gems, obscure records, boutique roasters).
+  3. **"Go Wild" (Cross-Domain Magic)** — Bridges completely different domains (e.g., your morning run vibe + indie anime taste ➔ recommends specific ambient techno vinyls or Japanese running apparel).
+  4. **"Trip Guide"** — Applies your shelf's vibe to any destination city (*"What would I love in Tokyo for a Morning Fun vibe?"*).
+- **Closing the Loop:**
+  - Every recommendation card displays artwork, title, match percentage, and plain-English reasoning (*"94% Match — Recommended based on your morning outdoor runs and ambient music"*).
+  - A single tap on **`+ Pin to Shelf`** instantly saves the discovery into the user's shelf.
+
+---
+
+## 3. Platform & Technical Foundations
+
+- **Platforms:** Single **Capacitor** codebase running natively on both **Android** and **iPhone (iOS)** with responsive web capability.
+- **Visual Design:** Stark white canvas (`#FFFFFF`) with dark squircle tiles (`#000000`), Nothing OS / Teenage Engineering inspired monochrome minimalism, and Framer Motion spring physics.
+- **Data & Sync:**
+  - Guest/Anonymous first for immediate frictionless usage.
+  - Optional Firebase Auth & Firestore sync so memories seamlessly update across both the user's Android phone and iPhone.
+- **Backend & Gateway:** Hosted API gateway proxying Qloo API keys, AniList/TMDB/Deezer/Google Books metadata, and Gemini context analysis securely.
+
+---
+
+## 4. Definition of Done ("Exactly Where to Build & When to Stop")
+
+Building is complete when:
+1. **The Canvas:** Opens as a stark white canvas with tactile squircle vibe shelves on both Android and iPhone.
+2. **The Ingestion Engine:** Accepts both media titles and voice/typed life notes, finds artwork/creates typographic post-its, and auto-routes them into custom vibe shelves (*Morning Fun*, *Midnight Delight*, etc.).
+3. **The Gallery:** Displays media posters alongside high-contrast typographic note cards.
+4. **The Taste Compass:** Synthesizes shelf vibes and life notes into live Qloo queries across the 4 modes and allows 1-tap pinning to a shelf.
+5. **Cross-Device Sync:** Data syncs between Android and iOS.
+6. **Zero Bloat:** No social feeds, no public profiles, no mandatory onboarding questionnaires, no ads.

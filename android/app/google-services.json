@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1059415279275",
+    "project_id": "weekendsahal",
+    "storage_bucket": "weekendsahal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1059415279275:android:baa7a55ef009c87c1e59ee",
+        "android_client_info": {
+          "package_name": "com.example.tastemem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCm2_W-qNxBLV7qu-hKUtaxk7AGEoADCXk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

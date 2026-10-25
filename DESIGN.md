@@ -43,22 +43,23 @@ tokens:
       damping: 25
       mass: 0.8
     spring-liquid:
-      stiffness: 260
-      damping: 18
-      mass: 1.0
+      stiffness: 280
+      damping: 20
+      mass: 0.9
     spring-jelly:
-      stiffness: 500
-      damping: 14
+      stiffness: 350
+      damping: 10
       mass: 0.5
-    jiggle-keyframes:
-      rotate: [-1.5, 1.5, -0.8, 0.8, 0]
-      scale: [1, 1.03, 0.98, 1.01, 1]
+    jelly-squash:
+      scaleX: [1, 1.28, 0.82, 1.14, 0.94, 1.02, 1]
+      scaleY: [1, 0.74, 1.22, 0.88, 1.06, 0.98, 1]
+      elasticity: 0.65
   radii:
     none: "0px"
     sm: "8px"
     md: "14px"
     lg: "24px"                     # Smooth Squircle Card
-    xl: "32px"                     # Fluid Shelf Block
+    xl: "36px"                     # Fluid Jelly Squircle Block
     pill: "9999px"
 ---
 
@@ -93,36 +94,33 @@ The visual language marries the hardware-software minimalism of **Nothing (Nothi
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  TASTEMEM : // CANVAS (Pure OLED Black)                     │
+│  MINIMALIST SPATIAL CANVAS (Pure White Canvas, Zero Top Bar)│
 │                                                             │
 │    ┌────────────────────────┐    ┌────────────────────────┐ │
-│    │ ┌────┐ ┌────┐          │    │ ┌─────────┐            │ │
-│    │ └────┘ └────┘          │    │ └─────────┘            │ │
+│    │ :: ANIME     [1/3] (Tv)│    │ :: MOVIES    [1/2](Film│ │
 │    │                        │    │                        │ │
-│    │ ANIME VAULT            │    │ TOKYO CAFÉS            │ │
-│    │ :: 14 ITEMS            │    │ :: 08 SPOTS            │ │
+│    │      ┌───────────┐     │    │      ┌───────────┐     │ │
+│    │      │  SINGLE   │     │    │      │  SINGLE   │     │ │
+│    │      │  POSTER   │     │    │      │  POSTER   │     │ │
+│    │      │ (CHOOSEN) │     │    │      │ (CHOOSEN) │     │ │
+│    │      └───────────┘     │    │      └───────────┘     │ │
+│    │ ANIME VAULT     [OPEN] │    │ LATE NIGHT CINEMA [OPEN│ │
+│    │ 3 ENTRIES              │    │ 2 ENTRIES              │ │
 │    └────────────────────────┘    └────────────────────────┘ │
-│         (Jiggles on touch)            (Draggable tile)      │
+│      (Jelly squash & stretch)         (Draggable elastic)   │
 │                                                             │
-│    ┌────────────────────────┐    ┌────────────────────────┐ │
-│    │ ┌────┐                 │    │         ┌───┐          │ │
-│    │ └────┘                 │    │         │ + │          │ │
-│    │                        │    │         └───┘          │ │
-│    │ LATE NIGHT CINEMA      │    │ NEW SHELF              │ │
-│    │ :: 06 FILMS            │    │ :: TAP TO CREATE       │ │
-│    └────────────────────────┘    └────────────────────────┘ │
-│                                                             │
-│               [ (•) TASTE COMPASS : GO WILD ]               │
+│               [ (•) TASTE COMPASS ]                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### Shelf Block Behavior
-- **Canvas State:** Floating square/squircle tiles resting on an ambient OLED dark plane.
-- **Micro-Physics:**
-  - `whileHover`: Slight expansion + subtle liquid float.
-  - `whileTap`: Micro-squish + jiggle rebound.
-  - `drag`: Free spatial positioning with organic damping.
-- **Tapping a Block:** Smoothly morphs and expands into the full-screen shelf view (`layoutId`).
+- **Canvas State:** Floating 1:1 squircle squares resting on a clean minimalist white plane with zero top headers.
+- **Single Selectable Poster:** Each vault displays a single high-contrast poster chosen by the user (not a mini collage). Users can cycle posters right from the square pill `[1/3]` or explicitly choose any item as the "★ VAULT POSTER" inside the vault detail view.
+- **Authentic Jelly Physics:**
+  - `whileHover`: Non-linear squircle boundary morphing and gelatinous wobble.
+  - `whileTap`: Deep soft-body squash (`scaleX: 1.28, scaleY: 0.74`) and rapid decaying spring rebound.
+  - `drag`: Viscous elastic stretching (`dragElastic: 0.65`) that snaps back with gelatin reverberation (`bounceDamping: 10, bounceStiffness: 350`).
+- **Tapping a Block:** Morphs into the immersive vault view with entry details and poster selector.
 
 ---
 

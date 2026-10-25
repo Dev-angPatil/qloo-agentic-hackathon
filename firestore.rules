@@ -1,0 +1,357 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Application: TasteMem (Curated Taste Profile & Canvas Memory App)
+//
+// Collection: /users/{userId}
+// Document ID: Matches Firebase Auth UID (userId)
+// Fields:
+//   - uid: string (optional, must match userId if present, 1-128 chars)
+//   - email: string (optional, max 254 chars)
+//   - displayName: string (optional, 1-100 chars)
+//   - photoURL: string (optional, max 500 chars)
+//   - isAnonymous: bool (optional)
+//   - createdAt: string or timestamp (optional, immutable, max 50 chars if string)
+//   - updatedAt: string or timestamp (optional, max 50 chars if string)
+//
+// Collection: /users/{userId}/shelves/{shelfId}
+// Document ID: Client-generated or Firestore ID (shelfId)
+// Fields:
+//   - id: string (required, must match shelfId, immutable, 1-100 chars)
+//   - title: string (required, shelf title, 1-200 chars)
+//   - domain: string (required, enum: 'anime' | 'movies' | 'music' | 'books' | 'places')
+//   - itemCount: int/float (required, non-negative integer or number <= 10000)
+//   - coverItemId: string or null (optional, max 100 chars)
+//   - colorTheme: string or null (optional, max 50 chars)
+//   - position: map or null (optional, containing { x: number, y: number })
+//   - createdAt: string or timestamp (optional, immutable, max 50 chars if string)
+//   - updatedAt: string or timestamp (optional, max 50 chars if string)
+//
+// Collection: /users/{userId}/shelves/{shelfId}/items/{itemId}
+// Document ID: Client-generated or Firestore ID (itemId)
+// Fields:
+//   - id: string (required, must match itemId, immutable, 1-100 chars)
+//   - shelfId: string (required, must match parent shelfId, immutable, 1-100 chars)
+//   - title: string (required, item title, 1-300 chars)
+//   - domain: string (required, enum: 'anime' | 'movies' | 'music' | 'books' | 'places')
+//   - subtitle: string or null (optional, max 300 chars)
+//   - coverImageUrl: string or null (optional, max 2000 chars)
+//   - description: string or null (optional, max 3000 chars)
+//   - userNote: string or null (optional, max 5000 chars)
+//   - qlooEntityId: string or null (optional, max 100 chars)
+//   - year: string or null (optional, max 50 chars)
+//   - ratingOrStatus: string or null (optional, max 100 chars)
+//   - memoryType: string or null (optional, enum: 'memory' | 'media' | 'chapter')
+//   - memoryStyle: string or null (optional, enum: 'post-it' | 'sticky' | 'vinyl' | 'record')
+//   - rating: number or null (optional, 0 to 100)
+//   - recordStatus: string or null (optional, enum: 'finished' | 'in-progress' | 'want-to-try')
+//   - memoryShape: string or null (optional, enum: 'note' | 'card' | 'circle')
+//   - memoryTone: string or null (optional, enum: 'sun' | 'rose' | 'mint' | 'sky' | 'lavender')
+//   - memoryFinish: string or null (optional, enum: 'paper' | 'tape' | 'clean')
+//   - pinned: bool or null (optional)
+//   - position: map or null (optional, containing { x: number, y: number })
+//   - accent: string or null (optional, max 50 chars)
+//   - createdAt: string or timestamp (optional, immutable, max 50 chars if string)
+//   - updatedAt: string or timestamp (optional, max 50 chars if string)
+//
+// Collection: /users/{userId}/canvas_items/{itemId}
+// Document ID: Client-generated or Firestore ID (itemId)
+// Fields:
+//   - id: string (required, must match itemId, immutable, 1-100 chars)
+//   - shelfId: string or null (optional, e.g. '__canvas__' or target shelf, max 100 chars)
+//   - title: string (required, item title, 1-300 chars)
+//   - domain: string (required, enum: 'anime' | 'movies' | 'music' | 'books' | 'places')
+//   - subtitle: string or null (optional, max 300 chars)
+//   - coverImageUrl: string or null (optional, max 2000 chars)
+//   - description: string or null (optional, max 3000 chars)
+//   - userNote: string or null (optional, max 5000 chars)
+//   - qlooEntityId: string or null (optional, max 100 chars)
+//   - year: string or null (optional, max 50 chars)
+//   - ratingOrStatus: string or null (optional, max 100 chars)
+//   - memoryType: string or null (optional, enum: 'memory' | 'media' | 'chapter')
+//   - memoryStyle: string or null (optional, enum: 'post-it' | 'sticky' | 'vinyl' | 'record')
+//   - rating: number or null (optional, 0 to 100)
+//   - recordStatus: string or null (optional, enum: 'finished' | 'in-progress' | 'want-to-try')
+//   - memoryShape: string or null (optional, enum: 'note' | 'card' | 'circle')
+//   - memoryTone: string or null (optional, enum: 'sun' | 'rose' | 'mint' | 'sky' | 'lavender')
+//   - memoryFinish: string or null (optional, enum: 'paper' | 'tape' | 'clean')
+//   - pinned: bool or null (optional)
+//   - position: map or null (optional, containing { x: number, y: number })
+//   - accent: string or null (optional, max 50 chars)
+//   - createdAt: string or timestamp (optional, immutable, max 50 chars if string)
+//   - updatedAt: string or timestamp (optional, max 50 chars if string)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Global Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isNumber(val) {
+      return val is int || val is float;
+    }
+
+    function isOptionalString(data, field, maxLen) {
+      return !(field in data) ||
+             data[field] == null ||
+             (data[field] is string && data[field].size() <= maxLen);
+    }
+
+    function isOptionalNumber(data, field, minVal, maxVal) {
+      return !(field in data) ||
+             data[field] == null ||
+             (isNumber(data[field]) && data[field] >= minVal && data[field] <= maxVal);
+    }
+
+    function isOptionalBool(data, field) {
+      return !(field in data) ||
+             data[field] == null ||
+             data[field] is bool;
+    }
+
+    function isValidDateTime(val) {
+      return val is timestamp ||
+             (val is string && val.size() >= 10 && val.size() <= 50);
+    }
+
+    function isOptionalDateTime(data, field) {
+      return !(field in data) ||
+             data[field] == null ||
+             isValidDateTime(data[field]);
+    }
+
+    function isValidDomain(domain) {
+      return domain is string &&
+             (domain == 'anime' || domain == 'movies' || domain == 'music' || domain == 'books' || domain == 'places');
+    }
+
+    function isValidMemoryType(mType) {
+      return mType is string &&
+             (mType == 'memory' || mType == 'media' || mType == 'chapter');
+    }
+
+    function isValidMemoryStyle(style) {
+      return style is string &&
+             (style == 'post-it' || style == 'sticky' || style == 'vinyl' || style == 'record');
+    }
+
+    function isValidRecordStatus(status) {
+      return status is string &&
+             (status == 'finished' || status == 'in-progress' || status == 'want-to-try');
+    }
+
+    function isValidMemoryShape(shape) {
+      return shape is string &&
+             (shape == 'note' || shape == 'card' || shape == 'circle');
+    }
+
+    function isValidMemoryTone(tone) {
+      return tone is string &&
+             (tone == 'sun' || tone == 'rose' || tone == 'mint' || tone == 'sky' || tone == 'lavender');
+    }
+
+    function isValidMemoryFinish(finish) {
+      return finish is string &&
+             (finish == 'paper' || finish == 'tape' || finish == 'clean');
+    }
+
+    function isValidPosition(pos) {
+      return pos == null || (
+        pos is map &&
+        pos.keys().hasOnly(['x', 'y']) &&
+        isNumber(pos.x) &&
+        isNumber(pos.y) &&
+        pos.x >= -100000 && pos.x <= 100000 &&
+        pos.y >= -100000 && pos.y <= 100000
+      );
+    }
+
+    function isOptionalPosition(data) {
+      return !('position' in data) || isValidPosition(data.position);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data, userId) {
+      let allowedKeys = ['uid', 'email', 'displayName', 'photoURL', 'isAnonymous', 'createdAt', 'updatedAt'];
+      return data.keys().hasOnly(allowedKeys) &&
+             (!('uid' in data) || data.uid == null || (data.uid is string && data.uid == userId)) &&
+             isOptionalString(data, 'email', 254) &&
+             isOptionalString(data, 'displayName', 100) &&
+             isOptionalString(data, 'photoURL', 500) &&
+             isOptionalBool(data, 'isAnonymous') &&
+             isOptionalDateTime(data, 'createdAt') &&
+             isOptionalDateTime(data, 'updatedAt');
+    }
+
+    function isUserUpdateAllowed() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return (!affected.hasAny(['uid']) || request.resource.data.uid == resource.data.uid) &&
+             (!affected.hasAny(['createdAt']) || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    function isValidShelf(data, shelfId) {
+      let allowedKeys = [
+        'id', 'title', 'domain', 'itemCount', 'coverItemId',
+        'colorTheme', 'position', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasAll(['id', 'title', 'domain', 'itemCount']) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.id is string && data.id == shelfId && data.id.size() >= 1 && data.id.size() <= 100 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             isValidDomain(data.domain) &&
+             isNumber(data.itemCount) && data.itemCount >= 0 && data.itemCount <= 10000 &&
+             isOptionalString(data, 'coverItemId', 100) &&
+             isOptionalString(data, 'colorTheme', 50) &&
+             isOptionalPosition(data) &&
+             isOptionalDateTime(data, 'createdAt') &&
+             isOptionalDateTime(data, 'updatedAt');
+    }
+
+    function isShelfUpdateAllowed() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return !affected.hasAny(['id']) &&
+             (!affected.hasAny(['createdAt']) || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    function isValidShelfItem(data, shelfId, itemId) {
+      let allowedKeys = [
+        'id', 'shelfId', 'title', 'subtitle', 'coverImageUrl',
+        'description', 'userNote', 'domain', 'qlooEntityId', 'year',
+        'ratingOrStatus', 'memoryType', 'memoryStyle', 'rating',
+        'recordStatus', 'memoryShape', 'memoryTone', 'memoryFinish',
+        'pinned', 'position', 'accent', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasAll(['id', 'shelfId', 'title', 'domain']) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.id is string && data.id == itemId && data.id.size() >= 1 && data.id.size() <= 100 &&
+             data.shelfId is string && data.shelfId == shelfId && data.shelfId.size() >= 1 && data.shelfId.size() <= 100 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+             isValidDomain(data.domain) &&
+             isOptionalString(data, 'subtitle', 300) &&
+             isOptionalString(data, 'coverImageUrl', 2000) &&
+             isOptionalString(data, 'description', 3000) &&
+             isOptionalString(data, 'userNote', 5000) &&
+             isOptionalString(data, 'qlooEntityId', 100) &&
+             isOptionalString(data, 'year', 50) &&
+             isOptionalString(data, 'ratingOrStatus', 100) &&
+             (!('memoryType' in data) || data.memoryType == null || isValidMemoryType(data.memoryType)) &&
+             (!('memoryStyle' in data) || data.memoryStyle == null || isValidMemoryStyle(data.memoryStyle)) &&
+             isOptionalNumber(data, 'rating', 0, 100) &&
+             (!('recordStatus' in data) || data.recordStatus == null || isValidRecordStatus(data.recordStatus)) &&
+             (!('memoryShape' in data) || data.memoryShape == null || isValidMemoryShape(data.memoryShape)) &&
+             (!('memoryTone' in data) || data.memoryTone == null || isValidMemoryTone(data.memoryTone)) &&
+             (!('memoryFinish' in data) || data.memoryFinish == null || isValidMemoryFinish(data.memoryFinish)) &&
+             isOptionalBool(data, 'pinned') &&
+             isOptionalPosition(data) &&
+             isOptionalString(data, 'accent', 50) &&
+             isOptionalDateTime(data, 'createdAt') &&
+             isOptionalDateTime(data, 'updatedAt');
+    }
+
+    function isShelfItemUpdateAllowed() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return !affected.hasAny(['id', 'shelfId']) &&
+             (!affected.hasAny(['createdAt']) || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    function isValidCanvasItem(data, itemId) {
+      let allowedKeys = [
+        'id', 'shelfId', 'title', 'subtitle', 'coverImageUrl',
+        'description', 'userNote', 'domain', 'qlooEntityId', 'year',
+        'ratingOrStatus', 'memoryType', 'memoryStyle', 'rating',
+        'recordStatus', 'memoryShape', 'memoryTone', 'memoryFinish',
+        'pinned', 'position', 'accent', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasAll(['id', 'title', 'domain']) &&
+             data.keys().hasOnly(allowedKeys) &&
+             data.id is string && data.id == itemId && data.id.size() >= 1 && data.id.size() <= 100 &&
+             isOptionalString(data, 'shelfId', 100) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 300 &&
+             isValidDomain(data.domain) &&
+             isOptionalString(data, 'subtitle', 300) &&
+             isOptionalString(data, 'coverImageUrl', 2000) &&
+             isOptionalString(data, 'description', 3000) &&
+             isOptionalString(data, 'userNote', 5000) &&
+             isOptionalString(data, 'qlooEntityId', 100) &&
+             isOptionalString(data, 'year', 50) &&
+             isOptionalString(data, 'ratingOrStatus', 100) &&
+             (!('memoryType' in data) || data.memoryType == null || isValidMemoryType(data.memoryType)) &&
+             (!('memoryStyle' in data) || data.memoryStyle == null || isValidMemoryStyle(data.memoryStyle)) &&
+             isOptionalNumber(data, 'rating', 0, 100) &&
+             (!('recordStatus' in data) || data.recordStatus == null || isValidRecordStatus(data.recordStatus)) &&
+             (!('memoryShape' in data) || data.memoryShape == null || isValidMemoryShape(data.memoryShape)) &&
+             (!('memoryTone' in data) || data.memoryTone == null || isValidMemoryTone(data.memoryTone)) &&
+             (!('memoryFinish' in data) || data.memoryFinish == null || isValidMemoryFinish(data.memoryFinish)) &&
+             isOptionalBool(data, 'pinned') &&
+             isOptionalPosition(data) &&
+             isOptionalString(data, 'accent', 50) &&
+             isOptionalDateTime(data, 'createdAt') &&
+             isOptionalDateTime(data, 'updatedAt');
+    }
+
+    function isCanvasItemUpdateAllowed() {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return !affected.hasAny(['id']) &&
+             (!affected.hasAny(['createdAt']) || request.resource.data.createdAt == resource.data.createdAt);
+    }
+
+    // ===============================================================
+    // Root Rule: Default Deny All
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Collection Rules: /users/{userId} and subcollections
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data, userId);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data, userId) && isUserUpdateAllowed();
+      allow delete: if isOwner(userId);
+
+      // User Shelves: /users/{userId}/shelves/{shelfId}
+      match /shelves/{shelfId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidShelf(request.resource.data, shelfId);
+        allow update: if isOwner(userId) && isValidShelf(request.resource.data, shelfId) && isShelfUpdateAllowed();
+        allow delete: if isOwner(userId);
+
+        // Shelf Items: /users/{userId}/shelves/{shelfId}/items/{itemId}
+        match /items/{itemId} {
+          allow read: if isOwner(userId);
+          allow create: if isOwner(userId) && isValidShelfItem(request.resource.data, shelfId, itemId);
+          allow update: if isOwner(userId) && isValidShelfItem(request.resource.data, shelfId, itemId) && isShelfItemUpdateAllowed();
+          allow delete: if isOwner(userId);
+        }
+      }
+
+      // User Canvas Items: /users/{userId}/canvas_items/{itemId}
+      match /canvas_items/{itemId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidCanvasItem(request.resource.data, itemId);
+        allow update: if isOwner(userId) && isValidCanvasItem(request.resource.data, itemId) && isCanvasItemUpdateAllowed();
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}
