@@ -45,6 +45,16 @@ class MainActivity : ComponentActivity() {
             showConnectionErrorDialog(error?.description?.toString())
           }
         }
+
+        override fun onReceivedHttpError(
+          view: WebView?,
+          request: WebResourceRequest?,
+          errorResponse: android.webkit.WebResourceResponse?
+        ) {
+          if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 200) >= 400) {
+            showConnectionErrorDialog("Server returned HTTP ${errorResponse?.statusCode} (${errorResponse?.reasonPhrase})")
+          }
+        }
       }
       webChromeClient = WebChromeClient()
     }
