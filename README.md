@@ -85,7 +85,12 @@ TasteMem Client (Infinite Whiteboard Canvas + Liquid Spring Physics)
 
 ## 📱 Mobile Native Build (Android / Capacitor)
 
-The repository includes a native Android wrapper (`android/`) with Jetpack Compose:
+### ⬇️ Download Hosted APK
+The production APK is hosted and published externally on GitHub Releases:
+- **Direct Download**: [**Download TasteMem.apk (v1.0.0)**](https://github.com/Dev-angPatil/qloo-agentic-hackathon/releases/download/v1.0.0/TasteMem.apk)
+- **Release Page**: [GitHub Releases v1.0.0](https://github.com/Dev-angPatil/qloo-agentic-hackathon/releases/tag/v1.0.0)
+
+To build from source:
 ```bash
 cd android
 ./gradlew assembleDebug
@@ -118,5 +123,6 @@ npm run test:stress
 | **3** | *"You can also do full edit my other agent is done working. You have full access"* | Obtained full write access to integrate frontend and backend directly. Registered Web and Android apps via Firebase MCP. Configured `google-services.json` and `.env`. Installed `firebase`, `firebase-admin`, `@google/genai`. Built `app/api/vibe/route.ts`, `src/lib/firebase/syncBridge.ts`, and hooked real-time synchronization into `app/page.tsx` and `src/lib/storage.ts`. Restored `ARCHITECTURE.md` and `README.md`. |
 | **4** | *"run it on my android phone"* | Built debug APK (`./gradlew installDebug`) and installed to physical device `TECNO_CN7c` (`164786766S020745`). Configured `adb reverse tcp:3000 tcp:3000` and `android:usesCleartextTraffic="true"` in `AndroidManifest.xml`. Launched Next.js production server on `0.0.0.0:3000`. Successfully launched `com.example.tastemem/.MainActivity` on the connected smartphone and captured live UI rendering. |
 | **5** | *"run it on my connected android phone"* | Connected to authorized physical Android phone (`TECNO_CN7c`, serial `164786766S020745`). Re-verified and installed the latest debug build (`./gradlew installDebug`). Started the mobile Next.js server (`npm run dev:mobile` on `0.0.0.0:3000`), established the USB port forward (`adb reverse tcp:3000 tcp:3000`), and launched `com.example.tastemem/.MainActivity`. Captured live screenshot confirming TasteMem whiteboard UI rendered directly on the device screen. |
+| **6** | *"git pish yourself. And can you host and send the apk on github yourself"* | Executed `git push origin main`. Created annotated release tag `v1.0.0` and pushed to GitHub. Created GitHub Release `v1.0.0` via GitHub REST API and uploaded binary asset `TasteMem.apk` (13.5 MB) directly to the release. Published permanent public direct download URL: `https://github.com/Dev-angPatil/qloo-agentic-hackathon/releases/download/v1.0.0/TasteMem.apk`. |
 
 
